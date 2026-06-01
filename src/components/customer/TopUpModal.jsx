@@ -10,13 +10,13 @@ import { CreditCard, Zap } from 'lucide-react';
 export default function TopUpModal({ open, onClose }) {
   const card = getCard();
   const [autoCharge, setAutoChargeState] = useState(getAutoCharge());
-  const [balance, setBalance] = useState(getCredits());
+  const [credits, setCredits] = useState(getCredits());
 
   const handleTopUp = () => {
-    if (!card) { toast.error('Add a card first'); return; }
+    if (!card) { toast.error('Please add a card first'); return; }
     topUp();
-    setBalance(getCredits());
-    toast.success('625 credits added! (500 + 25% bonus 🎉)');
+    setCredits(getCredits());
+    toast.success('625 credits added! (500 + 25% bonus)');
   };
 
   const toggleAuto = (val) => {
@@ -29,32 +29,28 @@ export default function TopUpModal({ open, onClose }) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader><DialogTitle>Top Up Credits</DialogTitle></DialogHeader>
-        <div className="space-y-5">
+        <div className="space-y-6">
           <div className="bg-blue-50 rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold text-blue-700">{balance}</p>
-            <p className="text-gray-500 text-sm">Current balance</p>
+            <p className="text-3xl font-bold text-blue-700">{credits}</p>
+            <p className="text-gray-500 text-sm">current balance</p>
           </div>
-          <div className="border-2 border-blue-100 rounded-xl p-4 space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-gray-800">500 credits</span>
-              <span className="text-green-600 font-bold bg-green-50 px-3 py-1 rounded-full text-sm">+25% = 625 total</span>
+          <div className="border border-blue-200 rounded-xl p-4 space-y-3">
+            <div className="flex justify-between">
+              <span className="font-medium text-gray-700">500 credits</span>
+              <span className="text-green-600 font-bold">+25% bonus = 625</span>
             </div>
-            {card ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <CreditCard className="w-4 h-4" />
-                Charged to •••• {card.number.slice(-4)}
-              </div>
-            ) : (
-              <p className="text-sm text-red-500">No card saved — add a card first</p>
-            )}
+            {card
+              ? <div className="flex items-center gap-2 text-sm text-gray-500"><CreditCard className="w-4 h-4" /><span>Charged to •••• {card.number.slice(-4)}</span></div>
+              : <p className="text-sm text-red-500">No card saved — add a card first</p>
+            }
             <Button onClick={handleTopUp} disabled={!card} className="w-full bg-blue-600 hover:bg-blue-700">
-              <Zap className="w-4 h-4 mr-2" /> Top Up 500 + 25% Bonus
+              <Zap className="w-4 h-4 mr-2" /> Top Up 500 + Bonus
             </Button>
           </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+          <div className="flex items-center justify-between">
             <div>
               <Label className="font-medium">Auto-charge</Label>
-              <p className="text-xs text-gray-500">Auto top-up when balance runs low</p>
+              <p className="text-xs text-gray-500">Auto top-up when credits run low</p>
             </div>
             <Switch checked={autoCharge} onCheckedChange={toggleAuto} />
           </div>

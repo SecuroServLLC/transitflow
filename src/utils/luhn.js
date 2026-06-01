@@ -26,8 +26,8 @@ export function generateCardNumber() {
   return partial + ((10 - (sum % 10)) % 10);
 }
 
-const FIRST = ['James', 'Emma', 'Oliver', 'Sophia', 'William', 'Ava', 'Lucas', 'Isabella', 'Henry', 'Mia'];
-const LAST = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Wilson', 'Taylor'];
+const FIRST = ['James','Emma','Oliver','Sophia','William','Ava','Lucas','Isabella','Henry','Mia','Noah','Charlotte'];
+const LAST = ['Smith','Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Wilson','Taylor','Anderson'];
 
 export function generateCardholderName() {
   return `${FIRST[Math.floor(Math.random() * FIRST.length)]} ${LAST[Math.floor(Math.random() * LAST.length)]}`;

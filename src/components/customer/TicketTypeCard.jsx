@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 
-const colorClasses = {
+const styles = {
   adult:    { border: 'border-blue-100 hover:border-blue-300',   badge: 'bg-blue-50 text-blue-700' },
   child:    { border: 'border-green-100 hover:border-green-300', badge: 'bg-green-50 text-green-700' },
   senior:   { border: 'border-purple-100 hover:border-purple-300', badge: 'bg-purple-50 text-purple-700' },
@@ -9,7 +9,7 @@ const colorClasses = {
 };
 
 export default function TicketTypeCard({ type, label, icon, cost, onBuy, loading, hasCredits }) {
-  const cls = colorClasses[type] || colorClasses.adult;
+  const cls = styles[type] || styles.adult;
   return (
     <div className={`bg-white rounded-2xl border-2 ${cls.border} p-6 flex flex-col items-center gap-4 hover:shadow-lg transition-all`}>
       <span className="text-5xl">{icon}</span>

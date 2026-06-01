@@ -13,30 +13,27 @@ export default function AdminLogin({ onLogin }) {
       sessionStorage.setItem('admin_auth', 'true');
       onLogin();
     } else {
-      setError('Invalid credentials');
+      setError('Invalid credentials. Use admin / admin');
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl">
-        <div className="text-center mb-6">
-          <div className="text-4xl mb-2">🚌</div>
+        <div className="text-center mb-8">
+          <div className="text-4xl mb-3">🚌</div>
           <h1 className="text-2xl font-bold text-gray-900">Admin Portal</h1>
           <p className="text-gray-500 text-sm">TransitTicket Management</p>
         </div>
         <div className="space-y-4">
-          <div>
-            <Label>Username</Label>
-            <Input value={username} onChange={e => setUsername(e.target.value)} placeholder="admin" />
-          </div>
+          <div><Label>Username</Label><Input value={username} onChange={e => setUsername(e.target.value)} placeholder="admin" /></div>
           <div>
             <Label>Password</Label>
-            <Input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              placeholder="••••••" onKeyDown={e => e.key === 'Enter' && handleLogin()} />
+            <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••"
+              onKeyDown={e => e.key === 'Enter' && handleLogin()} />
           </div>
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-          <Button onClick={handleLogin} className="w-full bg-slate-800 hover:bg-slate-700">Login</Button>
+          <Button onClick={handleLogin} className="w-full bg-slate-800 hover:bg-slate-700 h-11">Login</Button>
         </div>
       </div>
     </div>

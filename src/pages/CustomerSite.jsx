@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { CreditCard, Wallet, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
-const TICKET_TYPES = [
+const TYPES = [
   { type: 'adult',    label: 'Adult',    icon: '🧑' },
   { type: 'child',    label: 'Child',    icon: '👶' },
   { type: 'senior',   label: 'Senior',   icon: '👴' },
@@ -19,7 +19,7 @@ const TICKET_TYPES = [
 ];
 
 function genShortCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+  return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
 
 export default function CustomerSite() {
@@ -30,7 +30,7 @@ export default function CustomerSite() {
   const [purchasedTicket, setPurchasedTicket] = useState(null);
   const qc = useQueryClient();
 
-  const refreshWallet = () => { setCreditsState(getCredits()); setCardState(getCard()); };
+  const refresh = () => { setCreditsState(getCredits()); setCardState(getCard()); };
 
   const { data: pricingData = [] } = useQuery({ queryKey: ['pricing'], queryFn: () => base44.entities.Pricing.list() });
   const priceMap = {};
@@ -40,26 +40,27 @@ export default function CustomerSite() {
     mutationFn: d => base44.entities.Ticket.create(d),
     onSuccess: ticket => {
       deductCredits(ticket.credits_paid);
-      refreshWallet();
+      refresh();
       setPurchasedTicket(ticket);
       qc.invalidateQueries({ queryKey: ['tickets'] });
     }
   });
 
-  const buyTicket = (type) => {
+  const buy = (type) => {
     const cost = priceMap[type];
-    if (!cost) return toast.error('Pricing not set for this ticket type');
+    if (!cost) { toast.error('Price not configured for this ticket type'); return; }
     let cur = getCredits();
     if (cur < cost) {
       if (getAutoCharge() && getCard()) {
-        topUp(); refreshWallet(); cur = getCredits();
+        topUp(); refresh(); cur = getCredits();
         toast.success('Auto-charged 625 credits!');
       } else {
-        toast.error(`Need ${cost} credits, you have ${cur}. Please top up.`);
-        setShowTopUp(true); return;
+        toast.error(`Need ${cost} credits — you have ${cur}. Top up to continue.`);
+        setShowTopUp(true);
+        return;
       }
     }
-    if (cur < cost) { toast.error('Insufficient credits even after top-up.'); return; }
+    if (cur < cost) { toast.error('Still not enough credits.'); return; }
     createTicket.mutate({
       type, credits_paid: cost, purchase_method: 'online',
       status: 'unused', qr_token: crypto.randomUUID(),
@@ -81,7 +82,7 @@ export default function CustomerSite() {
               <span className="font-bold text-blue-700">{credits} credits</span>
             </div>
             <Button variant="outline" size="sm" onClick={() => setShowTopUp(true)}>
-              <Zap className="w-4 h-4 mr-1" />Top Up
+              <Zap className="w-4 h-4 mr-1" /> Top Up
             </Button>
             <Button variant="outline" size="sm" onClick={() => setShowAddCard(true)}>
               <CreditCard className="w-4 h-4 mr-1" />
@@ -98,13 +99,16 @@ export default function CustomerSite() {
           <>
             <div className="text-center mb-10">
               <h2 className="text-4xl font-bold text-gray-900">Buy a Ticket</h2>
-              <p className="text-gray-500 mt-2 text-lg">Select your fare type</p>
+              <p className="text-gray-500 mt-2 text-lg">Select your fare type below</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {TICKET_TYPES.map(t => (
-                <TicketTypeCard key={t.type} type={t.type} label={t.label} icon={t.icon}
-                  cost={priceMap[t.type]} hasCredits={credits >= (priceMap[t.type] || 0)}
-                  onBuy={() => buyTicket(t.type)} loading={createTicket.isPending} />
+              {TYPES.map(t => (
+                <TicketTypeCard key={t.type} {...t}
+                  cost={priceMap[t.type]}
+                  hasCredits={credits >= (priceMap[t.type] || 0)}
+                  onBuy={() => buy(t.type)}
+                  loading={createTicket.isPending}
+                />
               ))}
             </div>
             {!card && (
@@ -112,7 +116,7 @@ export default function CustomerSite() {
                 <p className="text-blue-700 font-semibold text-lg">No card saved yet</p>
                 <p className="text-blue-500 text-sm mt-1">Add a card to top up your credit wallet</p>
                 <Button className="mt-4 bg-blue-600 hover:bg-blue-700" onClick={() => setShowAddCard(true)}>
-                  <CreditCard className="w-4 h-4 mr-2" />Add Card
+                  <CreditCard className="w-4 h-4 mr-2" /> Add Card
                 </Button>
               </div>
             )}
@@ -120,8 +124,8 @@ export default function CustomerSite() {
         )}
       </main>
 
-      <AddCardModal open={showAddCard} onClose={() => { setShowAddCard(false); refreshWallet(); }} />
-      <TopUpModal open={showTopUp} onClose={() => { setShowTopUp(false); refreshWallet(); }} />
+      <AddCardModal open={showAddCard} onClose={() => { setShowAddCard(false); refresh(); }} />
+      <TopUpModal open={showTopUp} onClose={() => { setShowTopUp(false); refresh(); }} />
     </div>
   );
 }

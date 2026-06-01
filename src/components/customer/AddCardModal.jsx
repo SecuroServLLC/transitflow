@@ -9,27 +9,28 @@ import { toast } from 'sonner';
 import { Wand2 } from 'lucide-react';
 
 export default function AddCardModal({ open, onClose }) {
-  const [number, setNumber] = useState('');
-  const [name, setName] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
+  const [form, setForm] = useState({ number: '', name: '', expiry: '', cvv: '' });
   const [error, setError] = useState('');
 
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setError(''); };
+
   const generate = () => {
-    setNumber(formatCardDisplay(generateCardNumber()));
-    setName(generateCardholderName());
-    setExpiry(generateExpiry());
-    setCvv(generateCVV());
+    setForm({
+      number: formatCardDisplay(generateCardNumber()),
+      name: generateCardholderName(),
+      expiry: generateExpiry(),
+      cvv: generateCVV(),
+    });
     setError('');
   };
 
   const handleSave = () => {
-    const clean = number.replace(/\s/g, '');
-    if (!validateLuhn(clean)) { setError('Invalid card number — Luhn check failed'); return; }
-    if (!name.trim()) { setError('Cardholder name required'); return; }
-    if (!/^\d{2}\/\d{2}$/.test(expiry)) { setError('Invalid expiry format (MM/YY)'); return; }
-    if (!/^\d{3,4}$/.test(cvv)) { setError('Invalid CVV'); return; }
-    saveCard({ number: clean, name: name.trim(), expiry, cvv });
+    const clean = form.number.replace(/\s/g, '');
+    if (!validateLuhn(clean)) { setError('Invalid card number (fails Luhn check)'); return; }
+    if (!form.name.trim()) { setError('Cardholder name required'); return; }
+    if (!/^\d{2}\/\d{2}$/.test(form.expiry)) { setError('Invalid expiry format (MM/YY)'); return; }
+    if (!/^\d{3,4}$/.test(form.cvv)) { setError('Invalid CVV'); return; }
+    saveCard({ number: clean, name: form.name.trim(), expiry: form.expiry, cvv: form.cvv });
     toast.success('Card saved!');
     onClose();
   };
@@ -40,26 +41,13 @@ export default function AddCardModal({ open, onClose }) {
         <DialogHeader><DialogTitle>Add Credit Card</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <Button variant="outline" className="w-full" onClick={generate}>
-            <Wand2 className="w-4 h-4 mr-2" /> Generate Valid Test Card
+            <Wand2 className="w-4 h-4 mr-2" /> Generate Valid Card Details
           </Button>
-          <div>
-            <Label>Card Number</Label>
-            <Input placeholder="1234 5678 9012 3456" value={number}
-              onChange={e => { setNumber(e.target.value.replace(/[^\d\s]/g, '')); setError(''); }} />
-          </div>
-          <div>
-            <Label>Cardholder Name</Label>
-            <Input placeholder="John Smith" value={name} onChange={e => setName(e.target.value)} />
-          </div>
+          <div><Label>Card Number</Label><Input placeholder="1234 5678 9012 3456" value={form.number} onChange={e => set('number', e.target.value)} /></div>
+          <div><Label>Cardholder Name</Label><Input placeholder="John Smith" value={form.name} onChange={e => set('name', e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Expiry (MM/YY)</Label>
-              <Input placeholder="12/28" value={expiry} onChange={e => setExpiry(e.target.value)} maxLength={5} />
-            </div>
-            <div>
-              <Label>CVV</Label>
-              <Input placeholder="123" value={cvv} onChange={e => setCvv(e.target.value)} maxLength={4} />
-            </div>
+            <div><Label>Expiry (MM/YY)</Label><Input placeholder="12/28" value={form.expiry} onChange={e => set('expiry', e.target.value)} maxLength={5} /></div>
+            <div><Label>CVV</Label><Input placeholder="123" value={form.cvv} onChange={e => set('cvv', e.target.value)} maxLength={4} /></div>
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <div className="flex gap-3">

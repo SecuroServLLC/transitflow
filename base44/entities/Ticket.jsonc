@@ -55,6 +55,7 @@
     "type",
     "credits_paid",
     "status",
-    "qr_token"
+    "qr_token",
+    "short_code"
   ]
 }
