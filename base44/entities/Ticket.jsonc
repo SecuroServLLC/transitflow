@@ -1,0 +1,60 @@
+{
+  "name": "Ticket",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "adult",
+        "child",
+        "senior",
+        "student",
+        "military"
+      ],
+      "title": "Ticket Type"
+    },
+    "credits_paid": {
+      "type": "number",
+      "title": "Credits Paid"
+    },
+    "purchase_method": {
+      "type": "string",
+      "enum": [
+        "online",
+        "kiosk"
+      ],
+      "title": "Purchase Method"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unused",
+        "used",
+        "expired"
+      ],
+      "title": "Status"
+    },
+    "qr_token": {
+      "type": "string",
+      "title": "QR Token"
+    },
+    "short_code": {
+      "type": "string",
+      "title": "Short Code"
+    },
+    "purchased_at": {
+      "type": "string",
+      "title": "Purchased At"
+    },
+    "used_at": {
+      "type": "string",
+      "title": "Used At"
+    }
+  },
+  "required": [
+    "type",
+    "credits_paid",
+    "status",
+    "qr_token"
+  ]
+}

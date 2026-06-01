@@ -1,0 +1,25 @@
+{
+  "name": "Pricing",
+  "type": "object",
+  "properties": {
+    "ticket_type": {
+      "type": "string",
+      "enum": [
+        "adult",
+        "child",
+        "senior",
+        "student",
+        "military"
+      ],
+      "title": "Ticket Type"
+    },
+    "credit_cost": {
+      "type": "number",
+      "title": "Credit Cost"
+    }
+  },
+  "required": [
+    "ticket_type",
+    "credit_cost"
+  ]
+}
