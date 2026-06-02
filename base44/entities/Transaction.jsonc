@@ -1,0 +1,53 @@
+{
+  "name": "Transaction",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "title": "Customer ID"
+    },
+    "customer_name": {
+      "type": "string",
+      "title": "Customer Name"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "topup",
+        "purchase",
+        "refund",
+        "bonus"
+      ],
+      "title": "Type"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Credits Amount"
+    },
+    "kr_amount": {
+      "type": "number",
+      "title": "Amount (kr)"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "performed_by": {
+      "type": "string",
+      "title": "Performed By"
+    },
+    "ticket_id": {
+      "type": "string",
+      "title": "Ticket ID"
+    },
+    "refunded": {
+      "type": "boolean",
+      "title": "Refunded",
+      "default": false
+    }
+  },
+  "required": [
+    "type",
+    "amount"
+  ]
+}

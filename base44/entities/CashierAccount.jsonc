@@ -1,0 +1,28 @@
+{
+  "name": "CashierAccount",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Name"
+    },
+    "username": {
+      "type": "string",
+      "title": "Username"
+    },
+    "password": {
+      "type": "string",
+      "title": "Password"
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "username",
+    "password"
+  ]
+}

@@ -15,7 +15,11 @@
     },
     "credit_cost": {
       "type": "number",
-      "title": "Credit Cost"
+      "title": "Single Ticket (credits)"
+    },
+    "period_credit_cost": {
+      "type": "number",
+      "title": "Period Ticket 30d (credits)"
     }
   },
   "required": [

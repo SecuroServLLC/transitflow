@@ -10,13 +10,30 @@
       "type": "string",
       "title": "Email"
     },
+    "password": {
+      "type": "string",
+      "title": "Password"
+    },
     "phone": {
       "type": "string",
       "title": "Phone"
     },
-    "travel_credits": {
+    "credits": {
       "type": "number",
-      "title": "Travel Credits"
+      "title": "Credits",
+      "default": 0
+    },
+    "credit_cards": {
+      "type": "string",
+      "title": "Credit Cards (JSON)"
+    },
+    "vehicles": {
+      "type": "string",
+      "title": "Vehicles (JSON)"
+    },
+    "connected_users": {
+      "type": "string",
+      "title": "Connected Users (JSON)"
     }
   },
   "required": [

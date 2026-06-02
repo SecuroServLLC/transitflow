@@ -13,6 +13,15 @@
       ],
       "title": "Ticket Type"
     },
+    "ticket_category": {
+      "type": "string",
+      "enum": [
+        "single",
+        "period"
+      ],
+      "title": "Category",
+      "default": "single"
+    },
     "credits_paid": {
       "type": "number",
       "title": "Credits Paid"
@@ -21,7 +30,9 @@
       "type": "string",
       "enum": [
         "online",
-        "kiosk"
+        "kiosk",
+        "cashier",
+        "machine"
       ],
       "title": "Purchase Method"
     },
@@ -30,7 +41,8 @@
       "enum": [
         "unused",
         "used",
-        "expired"
+        "expired",
+        "active"
       ],
       "title": "Status"
     },
@@ -49,11 +61,27 @@
     "used_at": {
       "type": "string",
       "title": "Used At"
+    },
+    "valid_until": {
+      "type": "string",
+      "title": "Valid Until"
+    },
+    "customer_id": {
+      "type": "string",
+      "title": "Customer ID"
+    },
+    "customer_name": {
+      "type": "string",
+      "title": "Customer Name"
+    },
+    "customer_phone": {
+      "type": "string",
+      "title": "Customer Phone"
     }
   },
   "required": [
     "type",
-    "credits_paid",
+    "ticket_category",
     "status",
     "qr_token",
     "short_code"
