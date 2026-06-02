@@ -26,8 +26,11 @@ export default function CustomerAuth({ onLogin, minimal = false }) {
       const list = await base44.entities.Customer.filter({ email: email.toLowerCase().trim() });
       const c = list.find(c => c.password === password);
       if (!c) { toast.error('Invalid email or password'); return; }
-      setCustomerSession(c);
-      onLogin(c);
+      // Fetch full record to get all fields including credit_cards
+      const full = await base44.entities.Customer.filter({ id: c.id });
+      const fullRecord = full[0] || c;
+      setCustomerSession(fullRecord);
+      onLogin(fullRecord);
     } finally { setLoading(false); }
   };
 
@@ -38,8 +41,10 @@ export default function CustomerAuth({ onLogin, minimal = false }) {
       const list = await base44.entities.Customer.filter({ phone: phone.trim() });
       const c = list.find(c => validatePin(c.phone, pin));
       if (!c) { toast.error('Invalid phone or PIN'); return; }
-      setCustomerSession(c);
-      onLogin(c);
+      const full = await base44.entities.Customer.filter({ id: c.id });
+      const fullRecord = full[0] || c;
+      setCustomerSession(fullRecord);
+      onLogin(fullRecord);
     } finally { setLoading(false); }
   };
 

@@ -15,14 +15,11 @@ export default function CustomerApp() {
   const handleLogout = () => { clearCustomerSession(); setCustomer(null); };
 
   const refreshCustomer = async (updatedOrObj) => {
-    let fresh = updatedOrObj;
-    if (!fresh) {
-      const list = await base44.entities.Customer.filter({ id: customer.id });
-      fresh = list[0] || customer;
-    }
-    const updated = { ...customer, ...fresh };
-    setCustomerSession(updated);
-    setCustomer(updated);
+    // Always reload full record from DB to get all fields (cards, connected_users, etc.)
+    const list = await base44.entities.Customer.filter({ id: customer.id });
+    const fresh = list[0] || updatedOrObj || customer;
+    setCustomerSession(fresh);
+    setCustomer(fresh);
   };
 
   if (!customer) return <CustomerAuth onLogin={handleLogin} />;
