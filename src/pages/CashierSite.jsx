@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { LogOut, Search, Zap, ShoppingBag, History, Printer, Receipt } from 'lucide-react';
+import { LogOut, Search, Zap, ShoppingBag, History, Printer } from 'lucide-react';
+import LSTLogo from '@/components/LSTLogo';
 import { genShortCode, genTicketId } from '@/utils/customerAuth';
 
 const TYPES = ['adult','child','senior','student','military'];
@@ -211,13 +212,13 @@ export default function CashierSite() {
 
   if (!account) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl">
-          <div className="text-center mb-6"><div className="text-4xl mb-2">💼</div><h1 className="text-xl font-bold">Cashier Login</h1></div>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+        <div className="bg-[#111] border border-slate-800 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
+          <div className="text-center mb-6"><LSTLogo size={56} className="mx-auto mb-3" /><h1 className="text-xl font-black text-white">POS Terminal</h1><p className="text-slate-500 text-sm mt-1">Cashier Login</p></div>
           <div className="space-y-3">
-            <div><Label>Username</Label><Input value={loginForm.username} onChange={e => setLoginForm(f => ({...f, username: e.target.value}))} /></div>
-            <div><Label>Password</Label><Input type="password" value={loginForm.password} onChange={e => setLoginForm(f => ({...f, password: e.target.value}))} onKeyDown={e => e.key === 'Enter' && login()} /></div>
-            <Button onClick={login} className="w-full bg-gray-900 hover:bg-gray-800 h-11">Login</Button>
+            <div><Label className="text-slate-400 text-xs">Username</Label><Input value={loginForm.username} onChange={e => setLoginForm(f => ({...f, username: e.target.value}))} className="bg-[#0a0a0a] border-slate-700 text-white mt-1" /></div>
+            <div><Label className="text-slate-400 text-xs">Password</Label><Input type="password" value={loginForm.password} onChange={e => setLoginForm(f => ({...f, password: e.target.value}))} onKeyDown={e => e.key === 'Enter' && login()} className="bg-[#0a0a0a] border-slate-700 text-white mt-1" /></div>
+            <Button onClick={login} className="w-full bg-[#c0392b] hover:bg-[#a93226] h-11 font-bold">Login</Button>
           </div>
         </div>
       </div>
@@ -231,8 +232,8 @@ export default function CashierSite() {
     <div className="min-h-screen bg-gray-100">
       {printTicket && <TicketPrint ticket={printTicket} fees={appliedFees} onClose={() => setPrintTicket(null)} />}
 
-      <header className="bg-gray-900 text-white px-6 py-4 flex justify-between items-center">
-        <div><h1 className="font-bold text-lg">💼 Cashier Panel</h1><p className="text-gray-400 text-sm">{account.name}</p></div>
+      <header className="bg-[#0a0a0a] text-white px-6 py-3 flex justify-between items-center border-b-2 border-[#c0392b]">
+        <div className="flex items-center gap-3"><LSTLogo size={32} /><div><p className="font-bold text-sm">POS Terminal</p><p className="text-slate-400 text-xs">{account.name}</p></div></div>
         <div className="flex items-center gap-3">
           {feeTotal > 0 && <span className="bg-amber-500 text-black text-xs px-3 py-1 rounded-full font-bold">+{feeTotal} kr fees active</span>}
           <Button variant="ghost" onClick={() => setAccount(null)} className="text-gray-400 hover:text-red-400"><LogOut className="w-4 h-4 mr-2" />Logout</Button>
