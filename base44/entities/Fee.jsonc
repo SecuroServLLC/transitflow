@@ -1,0 +1,54 @@
+{
+  "name": "Fee",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Fee Name"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "surcharge",
+        "service_fee",
+        "platform_fee",
+        "tax"
+      ],
+      "title": "Type"
+    },
+    "applies_to": {
+      "type": "string",
+      "enum": [
+        "cashier",
+        "machine",
+        "online",
+        "all"
+      ],
+      "title": "Applies To",
+      "default": "all"
+    },
+    "amount_kr": {
+      "type": "number",
+      "title": "Fixed Amount (kr)",
+      "default": 0
+    },
+    "amount_percent": {
+      "type": "number",
+      "title": "Percentage (%)",
+      "default": 0
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    }
+  },
+  "required": [
+    "name",
+    "type"
+  ]
+}

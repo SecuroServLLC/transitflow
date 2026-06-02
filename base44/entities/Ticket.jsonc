@@ -2,6 +2,10 @@
   "name": "Ticket",
   "type": "object",
   "properties": {
+    "ticket_id": {
+      "type": "string",
+      "title": "Ticket ID"
+    },
     "type": {
       "type": "string",
       "enum": [
@@ -26,13 +30,22 @@
       "type": "number",
       "title": "Credits Paid"
     },
+    "kr_paid": {
+      "type": "number",
+      "title": "Amount Paid (kr)"
+    },
+    "fees_paid": {
+      "type": "number",
+      "title": "Fees Paid (kr)"
+    },
     "purchase_method": {
       "type": "string",
       "enum": [
         "online",
         "kiosk",
         "cashier",
-        "machine"
+        "machine",
+        "retailer"
       ],
       "title": "Purchase Method"
     },
@@ -77,6 +90,14 @@
     "customer_phone": {
       "type": "string",
       "title": "Customer Phone"
+    },
+    "issued_by": {
+      "type": "string",
+      "title": "Issued By"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
     }
   },
   "required": [
@@ -84,6 +105,7 @@
     "ticket_category",
     "status",
     "qr_token",
-    "short_code"
+    "short_code",
+    "ticket_id"
   ]
 }

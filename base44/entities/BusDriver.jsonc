@@ -1,0 +1,36 @@
+{
+  "name": "BusDriver",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Name"
+    },
+    "employee_id": {
+      "type": "string",
+      "title": "Employee ID"
+    },
+    "username": {
+      "type": "string",
+      "title": "Username"
+    },
+    "access_code": {
+      "type": "string",
+      "title": "Access Code"
+    },
+    "route": {
+      "type": "string",
+      "title": "Assigned Route"
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "username",
+    "access_code"
+  ]
+}

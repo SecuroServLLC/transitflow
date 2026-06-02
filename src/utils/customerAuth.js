@@ -1,4 +1,4 @@
-const SESSION_KEY = 'transit_customer_v2';
+const SESSION_KEY = 'transit_customer_v3';
 
 export function getCustomerSession() {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; }
@@ -10,7 +10,10 @@ export function setCustomerSession(customer) {
     name: customer.name,
     email: customer.email || '',
     phone: customer.phone || '',
-    credits: customer.credits || 0
+    credits: customer.credits || 0,
+    credit_cards: customer.credit_cards || '',
+    connected_users: customer.connected_users || '',
+    vehicles: customer.vehicles || ''
   }));
 }
 
@@ -36,4 +39,11 @@ export function safeJSON(val, fallback = []) {
 
 export function genShortCode() {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
+}
+
+export function genTicketId() {
+  const prefix = 'TT';
+  const ts = Date.now().toString(36).toUpperCase().slice(-5);
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${prefix}-${ts}-${rand}`;
 }

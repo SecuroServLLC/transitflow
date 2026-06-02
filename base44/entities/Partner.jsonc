@@ -1,0 +1,64 @@
+{
+  "name": "Partner",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Partner Name"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "transport",
+        "retail",
+        "hospitality",
+        "government",
+        "other"
+      ],
+      "title": "Type"
+    },
+    "contact_name": {
+      "type": "string",
+      "title": "Contact Person"
+    },
+    "email": {
+      "type": "string",
+      "title": "Email"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone"
+    },
+    "discount_rate": {
+      "type": "number",
+      "title": "Discount Rate (%)",
+      "default": 0
+    },
+    "revenue_share": {
+      "type": "number",
+      "title": "Revenue Share (%)",
+      "default": 0
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+    },
+    "contract_start": {
+      "type": "string",
+      "title": "Contract Start"
+    },
+    "contract_end": {
+      "type": "string",
+      "title": "Contract End"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "name",
+    "type"
+  ]
+}
