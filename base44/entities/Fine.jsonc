@@ -1,0 +1,87 @@
+{
+  "name": "Fine",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Passenger Name"
+    },
+    "dob": {
+      "type": "string",
+      "title": "Date of Birth"
+    },
+    "ssn": {
+      "type": "string",
+      "title": "SSN / Personnummer"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone"
+    },
+    "email": {
+      "type": "string",
+      "title": "Email"
+    },
+    "address": {
+      "type": "string",
+      "title": "Address"
+    },
+    "zip": {
+      "type": "string",
+      "title": "Zip Code"
+    },
+    "city": {
+      "type": "string",
+      "title": "City"
+    },
+    "reason": {
+      "type": "string",
+      "title": "Reason"
+    },
+    "busline": {
+      "type": "string",
+      "title": "Bus Line"
+    },
+    "tripID": {
+      "type": "string",
+      "title": "Trip ID"
+    },
+    "amount_kr": {
+      "type": "number",
+      "title": "Amount (kr)",
+      "default": 1150
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unpaid",
+        "paid",
+        "disputed"
+      ],
+      "default": "unpaid",
+      "title": "Status"
+    },
+    "issued_by": {
+      "type": "string",
+      "title": "Issued By"
+    },
+    "issued_by_id": {
+      "type": "string",
+      "title": "Inspector ID"
+    },
+    "issued_at": {
+      "type": "string",
+      "title": "Issued At"
+    },
+    "paid_at": {
+      "type": "string",
+      "title": "Paid At"
+    }
+  },
+  "required": [
+    "name",
+    "phone",
+    "reason",
+    "tripID"
+  ]
+}

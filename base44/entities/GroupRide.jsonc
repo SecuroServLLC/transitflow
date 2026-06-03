@@ -1,0 +1,50 @@
+{
+  "name": "GroupRide",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "title": "Group Code"
+    },
+    "host_name": {
+      "type": "string",
+      "title": "Host Name"
+    },
+    "host_id": {
+      "type": "string",
+      "title": "Host Customer ID"
+    },
+    "members": {
+      "type": "string",
+      "title": "Members (JSON)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "collecting",
+        "released",
+        "expired"
+      ],
+      "default": "collecting",
+      "title": "Status"
+    },
+    "cost_per_person": {
+      "type": "number",
+      "title": "Cost Per Person (credits)",
+      "default": 90
+    },
+    "ticket_type": {
+      "type": "string",
+      "default": "adult",
+      "title": "Ticket Type"
+    },
+    "expires_at": {
+      "type": "string",
+      "title": "Expires At"
+    }
+  },
+  "required": [
+    "code",
+    "host_name"
+  ]
+}
