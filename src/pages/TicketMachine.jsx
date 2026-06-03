@@ -14,7 +14,7 @@ function genAccessPin() {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { ArrowLeft, RotateCcw, Wand2, Lock } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Wand2, Lock, Settings, DollarSign, CreditCard, BarChart2, X } from 'lucide-react';
 
 const TYPES = [
   { type: 'adult', label: 'Adult', icon: '🧑' },
@@ -48,6 +48,8 @@ export default function TicketMachine() {
   const [topupAmount, setTopupAmount] = useState(500);
   const [foundCustomer, setFoundCustomer] = useState(null);
   const [lookupPhone, setLookupPhone] = useState('');
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [sessionStats, setSessionStats] = useState({ cash: 0, card: 0, txns: 0 });
   const qc = useQueryClient();
 
   const { data: machines = [], refetch: refetchMachines } = useQuery({
@@ -119,6 +121,24 @@ export default function TicketMachine() {
     else { toast.error('Customer not found'); setFoundCustomer(null); }
   };
 
+  const recordCashSale = async (amount) => {
+    if (account) {
+      const newCash = (account.cash_balance || 0) + amount;
+      const newTxns = (account.total_transactions || 0) + 1;
+      await base44.entities.MachineAccount.update(account.id, { cash_balance: newCash, total_transactions: newTxns });
+      setSessionStats(s => ({ ...s, cash: s.cash + amount, txns: s.txns + 1 }));
+    }
+  };
+
+  const recordCardSale = async (amount) => {
+    if (account) {
+      const newCard = (account.card_balance || 0) + amount;
+      const newTxns = (account.total_transactions || 0) + 1;
+      await base44.entities.MachineAccount.update(account.id, { card_balance: newCard, total_transactions: newTxns });
+      setSessionStats(s => ({ ...s, card: s.card + amount, txns: s.txns + 1 }));
+    }
+  };
+
   const buyWithCash = useMutation({
     mutationFn: async ({ inserted }) => {
       const validUntil = category === 'period' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
@@ -132,7 +152,7 @@ export default function TicketMachine() {
       });
       return t;
     },
-    onSuccess: t => { setTicket(t); setScreen('done'); }
+    onSuccess: async (t) => { await recordCashSale(cost); setTicket(t); setScreen('done'); }
   });
 
   const buyWithCard = useMutation({
@@ -150,7 +170,7 @@ export default function TicketMachine() {
       });
       return t;
     },
-    onSuccess: t => { setTicket(t); setScreen('done'); }
+    onSuccess: async (t) => { await recordCardSale(cost); setTicket(t); setScreen('done'); }
   });
 
   const doTopUp = useMutation({
@@ -235,12 +255,45 @@ export default function TicketMachine() {
       <header className="bg-slate-800 px-5 py-4 border-b border-slate-700 flex justify-between items-center">
         <div>
           <h1 className="font-bold text-lg">🖥️ {account.name}</h1>
-          <p className="text-slate-400 text-xs">{account.location} · ID: {account.machine_id}</p>
+          <p className="text-slate-400 text-xs">{account.location} · ID: <span className="font-mono font-bold text-blue-400">{account.machine_id}</span></p>
         </div>
-        <button onClick={lockMachine} className="flex items-center gap-2 text-slate-400 hover:text-red-400 text-sm transition-colors">
-          <Lock className="w-4 h-4" /> Lock
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowAdminPanel(true)} className="flex items-center gap-1.5 text-slate-400 hover:text-amber-400 text-sm transition-colors border border-slate-700 rounded-lg px-3 py-1.5">
+            <Settings className="w-4 h-4" /> Admin
+          </button>
+          <button onClick={lockMachine} className="flex items-center gap-2 text-slate-400 hover:text-red-400 text-sm transition-colors">
+            <Lock className="w-4 h-4" /> Lock
+          </button>
+        </div>
       </header>
+
+      {/* Admin Cash Panel Overlay */}
+      {showAdminPanel && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-600 rounded-3xl p-8 w-full max-w-sm shadow-2xl space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-black text-white flex items-center gap-2"><DollarSign className="w-5 h-5 text-green-400" /> Machine Admin</h2>
+              <button onClick={() => setShowAdminPanel(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Cash in Machine', value: `${((account.cash_balance || 0) + sessionStats.cash).toLocaleString()} kr`, icon: DollarSign, color: 'text-green-400' },
+                { label: 'Card Collected', value: `${((account.card_balance || 0) + sessionStats.card).toLocaleString()} kr`, icon: CreditCard, color: 'text-blue-400' },
+                { label: 'Session Txns', value: sessionStats.txns, icon: BarChart2, color: 'text-purple-400' },
+                { label: 'Total All Time', value: (account.total_transactions || 0) + sessionStats.txns, icon: BarChart2, color: 'text-amber-400' },
+              ].map(s => (
+                <div key={s.label} className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center">
+                  <s.icon className={`w-5 h-5 ${s.color} mx-auto mb-2`} />
+                  <p className={`text-xl font-black ${s.color}`}>{s.value}</p>
+                  <p className="text-slate-500 text-xs mt-1">{s.label}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-slate-500 text-xs text-center">Cash can only be emptied from the Admin Office. Session data will sync on next refresh.</p>
+            <Button onClick={() => setShowAdminPanel(false)} className="w-full bg-slate-700 hover:bg-slate-600">Close</Button>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 flex items-start justify-center p-6 overflow-y-auto">
         <div className="w-full max-w-2xl">

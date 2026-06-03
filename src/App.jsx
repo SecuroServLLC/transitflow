@@ -21,6 +21,7 @@ import FAQPage from './pages/FAQPage.jsx';
 import DriverPortal from './pages/DriverPortal.jsx';
 import OfficeAdmin from './pages/OfficeAdmin.jsx';
 import RoadmapPage from './pages/RoadmapPage.jsx';
+import ServiceMessages from './pages/ServiceMessages.jsx';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -65,6 +66,7 @@ const AuthenticatedApp = () => {
       {/* Info */}
       <Route path="/faq" element={<FAQPage />} />
       <Route path="/roadmap" element={<RoadmapPage />} />
+      <Route path="/service" element={<ServiceMessages />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import LSTLogo from '@/components/LSTLogo';
-import { Bus, Shield, Store, Users, MapPin, QrCode, Smartphone, Globe, CreditCard, ChevronRight, Star, Zap, Clock, CheckCircle } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { Bus, Shield, Store, Users, MapPin, QrCode, Smartphone, Globe, CreditCard, ChevronRight, Star, Zap, Clock, CheckCircle, MessageSquare, AlertTriangle } from 'lucide-react';
 
 const PORTALS = [
   { path: '/app', icon: Smartphone, label: 'Passenger App', desc: 'Buy tickets, top up credits, manage your account', color: 'from-red-900 to-red-700' },
@@ -13,6 +15,7 @@ const PORTALS = [
   { path: '/driver', icon: Bus, label: 'Driver Portal', desc: 'Bus driver scan & operations terminal', color: 'from-slate-800 to-slate-700' },
   { path: '/admin', icon: Shield, label: 'Admin Office', desc: 'Full system administration and analytics', color: 'from-slate-800 to-slate-700' },
   { path: '/faq', icon: Star, label: 'Help & FAQ', desc: 'Support, guides and frequently asked questions', color: 'from-slate-800 to-slate-700' },
+  { path: '/service', icon: AlertTriangle, label: 'Service Messages', desc: 'Live delays, disruptions & cancellations', color: 'from-slate-800 to-slate-700' },
 ];
 
 const STATS = [
@@ -28,6 +31,56 @@ const FEATURES = [
   { icon: Shield, title: 'Verified Security', desc: 'QR validation with inspector override.' },
   { icon: MapPin, title: 'Full Route Coverage', desc: 'Every bus stop, every route, all day.' },
 ];
+
+function ContactForm() {
+  const [form, setForm] = useState({ name: '', email: '', message: '' });
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.name || !form.email || !form.message) return;
+    setSending(true);
+    // Store as a partner inquiry (reuse Partner entity) with type 'other'
+    await base44.entities.Partner.create({ name: form.name, email: form.email, notes: form.message, type: 'other', is_active: false });
+    setSent(true);
+    setSending(false);
+  };
+
+  if (sent) return (
+    <div className="text-center py-8">
+      <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-3" />
+      <h3 className="text-xl font-black text-white">Message Received!</h3>
+      <p className="text-slate-400 text-sm mt-2">We'll get back to you within 48 hours.</p>
+    </div>
+  );
+
+  return (
+    <form onSubmit={submit} className="space-y-4 max-w-md mx-auto">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-slate-400 block mb-1">Name</label>
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required
+            className="w-full bg-[#0a0a0a] border border-slate-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#c0392b]" />
+        </div>
+        <div>
+          <label className="text-xs text-slate-400 block mb-1">Email</label>
+          <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required
+            className="w-full bg-[#0a0a0a] border border-slate-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#c0392b]" />
+        </div>
+      </div>
+      <div>
+        <label className="text-xs text-slate-400 block mb-1">Message</label>
+        <textarea value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} required rows={4}
+          className="w-full bg-[#0a0a0a] border border-slate-700 text-white rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-[#c0392b]" />
+      </div>
+      <button type="submit" disabled={sending}
+        className="w-full bg-[#c0392b] hover:bg-[#a93226] text-white font-bold py-3 rounded-xl text-sm transition-colors disabled:opacity-60">
+        {sending ? 'Sending...' : 'Send Message →'}
+      </button>
+    </form>
+  );
+}
 
 export default function LandingPage() {
   return (
@@ -46,6 +99,8 @@ export default function LandingPage() {
             <a href="#portals" className="hover:text-white transition-colors">Portals</a>
             <a href="#features" className="hover:text-white transition-colors">Features</a>
             <Link to="/roadmap" className="hover:text-white transition-colors">Roadmap</Link>
+            <Link to="/service" className="hover:text-white transition-colors">Service</Link>
+            <a href="#contact" className="hover:text-white transition-colors">Contact</a>
             <Link to="/faq" className="hover:text-white transition-colors">Help</Link>
           </div>
           <Link to="/app" className="bg-[#c0392b] hover:bg-[#a93226] text-white px-5 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
@@ -136,6 +191,18 @@ export default function LandingPage() {
               </Link>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Contact Form */}
+      <section id="contact" className="py-20 px-6 bg-[#0d0d0d] border-t border-slate-800">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="w-12 h-12 bg-[#c0392b]/20 border border-[#c0392b]/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <MessageSquare className="w-6 h-6 text-[#c0392b]" />
+          </div>
+          <h2 className="text-3xl font-black mb-3">Get In Touch</h2>
+          <p className="text-slate-400 mb-10">Questions, feedback, or partnership enquiries — we're here to help.</p>
+          <ContactForm />
         </div>
       </section>
 
