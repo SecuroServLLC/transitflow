@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { QRCodeSVG } from 'qrcode.react';
 import CashPad from '@/components/machine/CashPad';
 import { validateLuhn, generateCardNumber, generateCardholderName, generateExpiry, generateCVV, formatCardDisplay } from '@/utils/luhn';
-import { genShortCode } from '@/utils/customerAuth';
+import { genShortCode, genTicketId } from '@/utils/customerAuth';
 
 function genAccessPin() {
   let pin = '';
@@ -74,12 +74,12 @@ export default function TicketMachine() {
     }
   };
 
-  // Step 2: find machine by ID
+  // Step 2: find machine by ID (fetch fresh from DB to avoid stale cache)
   const checkMachineId = async () => {
     const id = machineIdInput.trim().toUpperCase();
     if (!id) return;
-    await refetchMachines();
-    const m = machines.find(m => m.machine_id === id && m.is_active !== false);
+    const all = await base44.entities.MachineAccount.list();
+    const m = all.find(m => m.machine_id === id && m.is_active !== false);
     if (!m) { toast.error('Machine ID not found or inactive'); return; }
     if (m.force_locked) { toast.error('This machine is force-locked by admin. Contact support.'); return; }
     if (m.session_token) { toast.error('This machine is already active on another device'); return; }
@@ -123,8 +123,9 @@ export default function TicketMachine() {
 
   const recordCashSale = async (amount) => {
     if (account) {
-      const newCash = (account.cash_balance || 0) + amount;
-      const newTxns = (account.total_transactions || 0) + 1;
+      const fresh = await base44.entities.MachineAccount.list().then(list => list.find(m => m.id === account.id));
+      const newCash = (fresh?.cash_balance || 0) + amount;
+      const newTxns = (fresh?.total_transactions || 0) + 1;
       await base44.entities.MachineAccount.update(account.id, { cash_balance: newCash, total_transactions: newTxns });
       setSessionStats(s => ({ ...s, cash: s.cash + amount, txns: s.txns + 1 }));
     }
@@ -132,8 +133,9 @@ export default function TicketMachine() {
 
   const recordCardSale = async (amount) => {
     if (account) {
-      const newCard = (account.card_balance || 0) + amount;
-      const newTxns = (account.total_transactions || 0) + 1;
+      const fresh = await base44.entities.MachineAccount.list().then(list => list.find(m => m.id === account.id));
+      const newCard = (fresh?.card_balance || 0) + amount;
+      const newTxns = (fresh?.total_transactions || 0) + 1;
       await base44.entities.MachineAccount.update(account.id, { card_balance: newCard, total_transactions: newTxns });
       setSessionStats(s => ({ ...s, card: s.card + amount, txns: s.txns + 1 }));
     }
@@ -142,13 +144,16 @@ export default function TicketMachine() {
   const buyWithCash = useMutation({
     mutationFn: async ({ inserted }) => {
       const validUntil = category === 'period' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
+      const ticketId = genTicketId();
       const t = await base44.entities.Ticket.create({
+        ticket_id: ticketId,
         type: selectedType, ticket_category: category, credits_paid: cost,
+        kr_paid: cost,
         purchase_method: 'machine', status: category === 'period' ? 'active' : 'unused',
         qr_token: crypto.randomUUID(), short_code: genShortCode(),
         purchased_at: new Date().toISOString(), valid_until: validUntil,
         customer_id: foundCustomer?.id || '', customer_name: foundCustomer?.name || 'Guest',
-        customer_phone: foundCustomer?.phone || '', machine_id: account?.machine_id || ''
+        customer_phone: foundCustomer?.phone || '', issued_by: account?.name || 'machine'
       });
       return t;
     },
@@ -160,13 +165,16 @@ export default function TicketMachine() {
       const clean = cardForm.number.replace(/\s/g, '');
       if (!validateLuhn(clean)) throw new Error('Invalid card number');
       const validUntil = category === 'period' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
+      const ticketId = genTicketId();
       const t = await base44.entities.Ticket.create({
+        ticket_id: ticketId,
         type: selectedType, ticket_category: category, credits_paid: cost,
+        kr_paid: cost,
         purchase_method: 'machine', status: category === 'period' ? 'active' : 'unused',
         qr_token: crypto.randomUUID(), short_code: genShortCode(),
         purchased_at: new Date().toISOString(), valid_until: validUntil,
         customer_id: foundCustomer?.id || '', customer_name: foundCustomer?.name || 'Guest',
-        customer_phone: foundCustomer?.phone || '', machine_id: account?.machine_id || ''
+        customer_phone: foundCustomer?.phone || '', issued_by: account?.name || 'machine'
       });
       return t;
     },
@@ -255,7 +263,7 @@ export default function TicketMachine() {
       <header className="bg-slate-800 px-5 py-4 border-b border-slate-700 flex justify-between items-center">
         <div>
           <h1 className="font-bold text-lg">🖥️ {account.name}</h1>
-          <p className="text-slate-400 text-xs">{account.location} · ID: <span className="font-mono font-bold text-blue-400">{account.machine_id}</span></p>
+          <p className="text-slate-400 text-xs">{account.terminal || account.location || '—'}{account.platform ? ` · ${account.platform}` : ''} · ID: <span className="font-mono font-bold text-blue-400">{account.machine_id}</span></p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowAdminPanel(true)} className="flex items-center gap-1.5 text-slate-400 hover:text-amber-400 text-sm transition-colors border border-slate-700 rounded-lg px-3 py-1.5">
