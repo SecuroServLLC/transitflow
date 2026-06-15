@@ -4,15 +4,25 @@
   "properties": {
     "name": {
       "type": "string",
-      "title": "Name"
+      "title": "Full Name"
+    },
+    "badge_id": {
+      "type": "string",
+      "title": "Badge ID (for login)"
     },
     "pin": {
       "type": "string",
-      "title": "PIN"
+      "title": "PIN (4-6 digits)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
     }
   },
   "required": [
     "name",
+    "badge_id",
     "pin"
   ]
 }

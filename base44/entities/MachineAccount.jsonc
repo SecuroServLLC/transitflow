@@ -4,27 +4,23 @@
   "properties": {
     "name": {
       "type": "string",
-      "title": "Name"
+      "title": "Machine Name"
     },
-    "location": {
+    "terminal": {
       "type": "string",
-      "title": "Location"
+      "title": "Terminal / Location Name"
+    },
+    "platform": {
+      "type": "string",
+      "title": "Platform / Bay"
     },
     "machine_id": {
       "type": "string",
-      "title": "Machine ID"
+      "title": "Machine ID (6-char)"
     },
     "access_pin": {
       "type": "string",
       "title": "Access PIN (12-digit)"
-    },
-    "username": {
-      "type": "string",
-      "title": "Username (legacy)"
-    },
-    "password": {
-      "type": "string",
-      "title": "Password (legacy)"
     },
     "is_active": {
       "type": "boolean",

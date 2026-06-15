@@ -22,6 +22,10 @@ import DriverPortal from './pages/DriverPortal.jsx';
 import OfficeAdmin from './pages/OfficeAdmin.jsx';
 import RoadmapPage from './pages/RoadmapPage.jsx';
 import ServiceMessages from './pages/ServiceMessages.jsx';
+import InspectorPortal from './pages/system/InspectorPortal.jsx';
+import POSTerminal from './pages/system/POSTerminal.jsx';
+import TVMPortal from './pages/system/TVMPortal.jsx';
+import AdminPortal from './pages/system/AdminPortal.jsx';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -48,15 +52,18 @@ const AuthenticatedApp = () => {
       {/* Passenger */}
       <Route path="/app" element={<CustomerApp />} />
       <Route path="/web" element={<CustomerWeb />} />
-      {/* Staff terminals */}
+      {/* Staff terminals — legacy short URLs still work */}
       <Route path="/pos" element={<CashierSite />} />
       <Route path="/cashier" element={<CashierSite />} />
       <Route path="/tvm" element={<TicketMachine />} />
       <Route path="/machine" element={<TicketMachine />} />
-      {/* Inspector */}
       <Route path="/inspect" element={<InspectorSite />} />
-      {/* Administration */}
       <Route path="/admin" element={<AdminSite />} />
+      {/* /system/ paths — clean staff URLs */}
+      <Route path="/system/inspect" element={<InspectorPortal />} />
+      <Route path="/system/pos" element={<POSTerminal />} />
+      <Route path="/system/tvm" element={<TVMPortal />} />
+      <Route path="/system/admin" element={<AdminPortal />} />
       <Route path="/office" element={<OfficeAdmin />} />
       {/* Partners */}
       <Route path="/retail" element={<RetailerSite />} />
