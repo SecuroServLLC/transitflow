@@ -123,9 +123,10 @@ export default function TicketMachine() {
 
   const recordCashSale = async (amount) => {
     if (account) {
-      const fresh = await base44.entities.MachineAccount.list().then(list => list.find(m => m.id === account.id));
-      const newCash = (fresh?.cash_balance || 0) + amount;
-      const newTxns = (fresh?.total_transactions || 0) + 1;
+      const fresh = await base44.entities.MachineAccount.filter({ machine_id: account.machine_id });
+      const m = fresh[0];
+      const newCash = (m?.cash_balance || 0) + amount;
+      const newTxns = (m?.total_transactions || 0) + 1;
       await base44.entities.MachineAccount.update(account.id, { cash_balance: newCash, total_transactions: newTxns });
       setSessionStats(s => ({ ...s, cash: s.cash + amount, txns: s.txns + 1 }));
     }
@@ -133,52 +134,55 @@ export default function TicketMachine() {
 
   const recordCardSale = async (amount) => {
     if (account) {
-      const fresh = await base44.entities.MachineAccount.list().then(list => list.find(m => m.id === account.id));
-      const newCard = (fresh?.card_balance || 0) + amount;
-      const newTxns = (fresh?.total_transactions || 0) + 1;
+      const fresh = await base44.entities.MachineAccount.filter({ machine_id: account.machine_id });
+      const m = fresh[0];
+      const newCard = (m?.card_balance || 0) + amount;
+      const newTxns = (m?.total_transactions || 0) + 1;
       await base44.entities.MachineAccount.update(account.id, { card_balance: newCard, total_transactions: newTxns });
       setSessionStats(s => ({ ...s, card: s.card + amount, txns: s.txns + 1 }));
     }
   };
 
   const buyWithCash = useMutation({
-    mutationFn: async ({ inserted }) => {
-      const validUntil = category === 'period' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
+    mutationFn: async ({ ticketType, ticketCategory, ticketCost, customer }) => {
+      const validUntil = ticketCategory === 'period' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
       const ticketId = genTicketId();
       const t = await base44.entities.Ticket.create({
         ticket_id: ticketId,
-        type: selectedType, ticket_category: category, credits_paid: cost,
-        kr_paid: cost,
-        purchase_method: 'machine', status: category === 'period' ? 'active' : 'unused',
+        type: ticketType, ticket_category: ticketCategory, credits_paid: ticketCost,
+        kr_paid: ticketCost,
+        purchase_method: 'machine', status: ticketCategory === 'period' ? 'active' : 'unused',
         qr_token: crypto.randomUUID(), short_code: genShortCode(),
         purchased_at: new Date().toISOString(), valid_until: validUntil,
-        customer_id: foundCustomer?.id || '', customer_name: foundCustomer?.name || 'Guest',
-        customer_phone: foundCustomer?.phone || '', issued_by: account?.name || 'machine'
+        customer_id: customer?.id || '', customer_name: customer?.name || 'Guest',
+        customer_phone: customer?.phone || '', issued_by: account?.name || 'machine'
       });
-      return t;
+      return { ticket: t, ticketCost };
     },
-    onSuccess: async (t) => { await recordCashSale(cost); setTicket(t); setScreen('done'); }
+    onSuccess: async ({ ticket: t, ticketCost }) => { await recordCashSale(ticketCost); setTicket(t); setScreen('done'); },
+    onError: (e) => { toast.error(e.message || 'Payment failed'); }
   });
 
   const buyWithCard = useMutation({
-    mutationFn: async () => {
-      const clean = cardForm.number.replace(/\s/g, '');
+    mutationFn: async ({ card, ticketType, ticketCategory, ticketCost, customer }) => {
+      const clean = card.number.replace(/\s/g, '');
       if (!validateLuhn(clean)) throw new Error('Invalid card number');
-      const validUntil = category === 'period' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
+      const validUntil = ticketCategory === 'period' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
       const ticketId = genTicketId();
       const t = await base44.entities.Ticket.create({
         ticket_id: ticketId,
-        type: selectedType, ticket_category: category, credits_paid: cost,
-        kr_paid: cost,
-        purchase_method: 'machine', status: category === 'period' ? 'active' : 'unused',
+        type: ticketType, ticket_category: ticketCategory, credits_paid: ticketCost,
+        kr_paid: ticketCost,
+        purchase_method: 'machine', status: ticketCategory === 'period' ? 'active' : 'unused',
         qr_token: crypto.randomUUID(), short_code: genShortCode(),
         purchased_at: new Date().toISOString(), valid_until: validUntil,
-        customer_id: foundCustomer?.id || '', customer_name: foundCustomer?.name || 'Guest',
-        customer_phone: foundCustomer?.phone || '', issued_by: account?.name || 'machine'
+        customer_id: customer?.id || '', customer_name: customer?.name || 'Guest',
+        customer_phone: customer?.phone || '', issued_by: account?.name || 'machine'
       });
-      return t;
+      return { ticket: t, ticketCost };
     },
-    onSuccess: async (t) => { await recordCardSale(cost); setTicket(t); setScreen('done'); }
+    onSuccess: async ({ ticket: t, ticketCost }) => { await recordCardSale(ticketCost); setTicket(t); setScreen('done'); },
+    onError: (e) => { toast.error(e.message || 'Card payment failed'); }
   });
 
   const doTopUp = useMutation({
@@ -361,10 +365,17 @@ export default function TicketMachine() {
                 </div>
                 {foundCustomer && <p className="text-green-400 text-sm mt-2 text-center">✓ {foundCustomer.name}</p>}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Button onClick={() => setPayMethod('cash')} className="h-14 text-lg bg-amber-700 hover:bg-amber-600">💵 Cash</Button>
-                <Button onClick={() => setPayMethod('card')} className="h-14 text-lg bg-blue-600 hover:bg-blue-700">💳 Card</Button>
-              </div>
+              {cost <= 0 ? (
+                <div className="bg-red-900/30 border border-red-600 rounded-2xl p-4 text-center">
+                  <p className="text-red-400 font-bold">No pricing configured</p>
+                  <p className="text-red-300 text-sm mt-1">Contact admin to set up ticket pricing</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Button onClick={() => setPayMethod('cash')} className="h-14 text-lg bg-amber-700 hover:bg-amber-600">💵 Cash</Button>
+                  <Button onClick={() => setPayMethod('card')} className="h-14 text-lg bg-blue-600 hover:bg-blue-700">💳 Card</Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -374,7 +385,7 @@ export default function TicketMachine() {
                 <button onClick={() => setPayMethod(null)} className="text-slate-400 hover:text-white"><ArrowLeft className="w-6 h-6" /></button>
                 <h2 className="text-2xl font-bold">Cash — {cost} kr</h2>
               </div>
-              <CashPad targetAmount={cost} onComplete={(inserted) => buyWithCash.mutate({ inserted })} onCancel={() => setPayMethod(null)} />
+              <CashPad targetAmount={cost} onComplete={() => buyWithCash.mutate({ ticketType: selectedType, ticketCategory: category, ticketCost: cost, customer: foundCustomer })} onCancel={() => setPayMethod(null)} />
             </div>
           )}
 
@@ -394,7 +405,7 @@ export default function TicketMachine() {
                   <Input value={cardForm.cvv} onChange={e => setCardForm(f => ({ ...f, cvv: e.target.value }))} placeholder="CVV" className="bg-slate-700 border-slate-600 text-white h-12 text-center" />
                 </div>
               </div>
-              <Button onClick={() => buyWithCard.mutate()} disabled={buyWithCard.isPending} className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-700">💳 Pay {cost} kr</Button>
+              <Button onClick={() => buyWithCard.mutate({ card: cardForm, ticketType: selectedType, ticketCategory: category, ticketCost: cost, customer: foundCustomer })} disabled={buyWithCard.isPending} className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-700">💳 Pay {cost} kr</Button>
             </div>
           )}
 
