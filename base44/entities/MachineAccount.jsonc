@@ -6,17 +6,39 @@
       "type": "string",
       "title": "Machine Name"
     },
-    "terminal": {
+    "machine_type": {
       "type": "string",
-      "title": "Terminal / Location Name"
-    },
-    "platform": {
-      "type": "string",
-      "title": "Platform / Bay"
+      "enum": [
+        "bus",
+        "tvm",
+        "express"
+      ],
+      "title": "Machine Type",
+      "default": "tvm"
     },
     "machine_id": {
       "type": "string",
-      "title": "Machine ID (6-char)"
+      "title": "Machine ID (4 or 6 digits)"
+    },
+    "parent_machine_id": {
+      "type": "string",
+      "title": "Parent Machine ID (for express, 4-digit base)"
+    },
+    "express_suffix": {
+      "type": "string",
+      "title": "Express Suffix (00-99)"
+    },
+    "location_id": {
+      "type": "string",
+      "title": "Location ID"
+    },
+    "location_name": {
+      "type": "string",
+      "title": "Location Name"
+    },
+    "terminal": {
+      "type": "string",
+      "title": "Terminal / Platform"
     },
     "access_pin": {
       "type": "string",
@@ -34,17 +56,7 @@
     },
     "session_token": {
       "type": "string",
-      "title": "Session Token (active session)"
-    },
-    "cash_balance": {
-      "type": "number",
-      "title": "Cash Balance (kr)",
-      "default": 0
-    },
-    "card_balance": {
-      "type": "number",
-      "title": "Card Collected (kr)",
-      "default": 0
+      "title": "Session Token"
     },
     "total_transactions": {
       "type": "number",
@@ -59,6 +71,6 @@
   "required": [
     "name",
     "machine_id",
-    "access_pin"
+    "machine_type"
   ]
 }

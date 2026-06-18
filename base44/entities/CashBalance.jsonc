@@ -1,0 +1,39 @@
+{
+  "name": "CashBalance",
+  "type": "object",
+  "properties": {
+    "machine_id": {
+      "type": "string",
+      "title": "Machine ID"
+    },
+    "machine_name": {
+      "type": "string",
+      "title": "Machine Name"
+    },
+    "cash_total_kr": {
+      "type": "number",
+      "title": "Cash Total (kr)",
+      "default": 0
+    },
+    "card_total_kr": {
+      "type": "number",
+      "title": "Card Total (kr)",
+      "default": 0
+    },
+    "last_emptied_at": {
+      "type": "string",
+      "title": "Last Emptied At"
+    },
+    "emptied_by": {
+      "type": "string",
+      "title": "Emptied By"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "machine_id"
+  ]
+}

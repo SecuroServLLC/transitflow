@@ -1,0 +1,47 @@
+{
+  "name": "Location",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Location Name"
+    },
+    "address": {
+      "type": "string",
+      "title": "Address"
+    },
+    "city": {
+      "type": "string",
+      "title": "City"
+    },
+    "zip": {
+      "type": "string",
+      "title": "Zip Code"
+    },
+    "location_type": {
+      "type": "string",
+      "enum": [
+        "terminal",
+        "bus_stop",
+        "tram_stop",
+        "depot",
+        "office",
+        "other"
+      ],
+      "title": "Location Type",
+      "default": "terminal"
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

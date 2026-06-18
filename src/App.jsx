@@ -26,6 +26,7 @@ import InspectorPortal from './pages/system/InspectorPortal.jsx';
 import POSTerminal from './pages/system/POSTerminal.jsx';
 import TVMPortal from './pages/system/TVMPortal.jsx';
 import AdminPortal from './pages/system/AdminPortal.jsx';
+import TVMExpress from './pages/system/TVMExpress.jsx';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -64,6 +65,7 @@ const AuthenticatedApp = () => {
       <Route path="/system/pos" element={<POSTerminal />} />
       <Route path="/system/tvm" element={<TVMPortal />} />
       <Route path="/system/admin" element={<AdminPortal />} />
+      <Route path="/system/tvmexpress" element={<TVMExpress />} />
       <Route path="/office" element={<OfficeAdmin />} />
       {/* Partners */}
       <Route path="/retail" element={<RetailerSite />} />

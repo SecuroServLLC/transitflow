@@ -7,6 +7,9 @@ import PricingManager from '@/components/admin/PricingManager';
 import TicketsOverview from '@/components/admin/TicketsOverview';
 import CashierManager from '@/components/admin/CashierManager';
 import MachineManager from '@/components/admin/MachineManager';
+import NewMachineManager from '@/components/admin/NewMachineManager';
+import LocationsManager from '@/components/admin/LocationsManager';
+import TransitCardManager from '@/components/admin/TransitCardManager';
 import AdminRefunds from '@/components/admin/AdminRefunds';
 import RetailersManager from '@/components/admin/RetailersManager';
 import PartnersManager from '@/components/admin/PartnersManager';
@@ -18,7 +21,7 @@ import LSTLogo from '@/components/LSTLogo';
 import {
   LayoutDashboard, Users, Shield, Tag, QrCode, LogOut,
   Briefcase, MonitorSmartphone, RotateCcw, Store, Handshake,
-  Bus, Coins, FileText, AlertTriangle
+  Bus, Coins, FileText, AlertTriangle, MapPin, CreditCard
 } from 'lucide-react';
 
 const NAV = [
@@ -32,7 +35,9 @@ const NAV = [
   { id: 'cashiers',   label: 'Cashiers',       icon: Briefcase },
   { id: 'inspectors', label: 'Inspectors',     icon: Shield },
   { id: 'drivers',    label: 'Bus Drivers',    icon: Bus },
-  { id: 'machines',   label: 'Machines',       icon: MonitorSmartphone },
+  { id: 'machines',   label: 'Maskiner',       icon: MonitorSmartphone },
+  { id: 'locations',  label: 'Lokasjoner',     icon: MapPin },
+  { id: 'transitcards', label: 'TransitKort',  icon: CreditCard },
   { id: 'sep2', sep: true },
   { id: 'retailers',  label: 'Retailers',      icon: Store },
   { id: 'partners',   label: 'Partners',       icon: Handshake },
@@ -45,7 +50,9 @@ const SECTIONS = {
   customers: CustomersManager,
   inspectors: InspectorsManager,
   cashiers: CashierManager,
-  machines: MachineManager,
+  machines: NewMachineManager,
+  locations: LocationsManager,
+  transitcards: TransitCardManager,
   pricing: PricingManager,
   tickets: TicketsOverview,
   refunds: AdminRefunds,

@@ -1,0 +1,75 @@
+{
+  "name": "TransitCard",
+  "type": "object",
+  "properties": {
+    "card_number": {
+      "type": "string",
+      "title": "Card Number (10 digits)"
+    },
+    "customer_id": {
+      "type": "string",
+      "title": "Linked Customer ID"
+    },
+    "customer_name": {
+      "type": "string",
+      "title": "Customer Name"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "blocked",
+        "expired"
+      ],
+      "title": "Status",
+      "default": "active"
+    },
+    "balance_credits": {
+      "type": "number",
+      "title": "Balance (credits)",
+      "default": 0
+    },
+    "is_registered": {
+      "type": "boolean",
+      "title": "Registered to Customer",
+      "default": false
+    },
+    "favorite_ticket_type": {
+      "type": "string",
+      "enum": [
+        "adult",
+        "child",
+        "senior",
+        "student",
+        "military"
+      ],
+      "title": "Favorite Ticket Type",
+      "default": "adult"
+    },
+    "favorite_ticket_category": {
+      "type": "string",
+      "enum": [
+        "single",
+        "period"
+      ],
+      "title": "Favorite Ticket Category",
+      "default": "single"
+    },
+    "linked_mobile_uid": {
+      "type": "string",
+      "title": "Linked Mobile UID"
+    },
+    "last_used_at": {
+      "type": "string",
+      "title": "Last Used At"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "card_number",
+    "status"
+  ]
+}

@@ -14,7 +14,7 @@ function genAccessPin() {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { ArrowLeft, RotateCcw, Wand2, Lock, Settings, DollarSign, CreditCard, BarChart2, X } from 'lucide-react';
+import {   ArrowLeft, RotateCcw, Wand2, Lock, Settings, Banknote, CreditCard, BarChart2, X } from 'lucide-react';
 
 const TYPES = [
   { type: 'adult', label: 'Adult', icon: '🧑' },
@@ -155,18 +155,18 @@ export default function TicketMachine() {
         qr_token: crypto.randomUUID(), short_code: genShortCode(),
         purchased_at: new Date().toISOString(), valid_until: validUntil,
         customer_id: customer?.id || '', customer_name: customer?.name || 'Guest',
-        customer_phone: customer?.phone || '', issued_by: account?.name || 'machine'
+        customer_phone: customer?.phone || '', issued_by: `${account?.machine_id || 'machine'}·${account?.name || ''}`
       });
       return { ticket: t, ticketCost };
     },
     onSuccess: async ({ ticket: t, ticketCost }) => { await recordCashSale(ticketCost); setTicket(t); setScreen('done'); },
-    onError: (e) => { toast.error(e.message || 'Payment failed'); }
+    onError: (e) => { toast.error(e.message || 'Betalingsfeil') }
   });
 
   const buyWithCard = useMutation({
     mutationFn: async ({ card, ticketType, ticketCategory, ticketCost, customer }) => {
       const clean = card.number.replace(/\s/g, '');
-      if (!validateLuhn(clean)) throw new Error('Invalid card number');
+      if (!validateLuhn(clean)) throw new Error('Ugyldig kortnummer');
       const validUntil = ticketCategory === 'period' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
       const ticketId = genTicketId();
       const t = await base44.entities.Ticket.create({
@@ -176,8 +176,8 @@ export default function TicketMachine() {
         purchase_method: 'machine', status: ticketCategory === 'period' ? 'active' : 'unused',
         qr_token: crypto.randomUUID(), short_code: genShortCode(),
         purchased_at: new Date().toISOString(), valid_until: validUntil,
-        customer_id: customer?.id || '', customer_name: customer?.name || 'Guest',
-        customer_phone: customer?.phone || '', issued_by: account?.name || 'machine'
+        customer_id: customer?.id || '', customer_name: customer?.name || 'Gjest',
+        customer_phone: customer?.phone || '', issued_by: `${account?.machine_id || 'machine'}·${account?.name || ''}`
       });
       return { ticket: t, ticketCost };
     },
@@ -284,15 +284,15 @@ export default function TicketMachine() {
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-slate-800 border border-slate-600 rounded-3xl p-8 w-full max-w-sm shadow-2xl space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-black text-white flex items-center gap-2"><DollarSign className="w-5 h-5 text-green-400" /> Machine Admin</h2>
+              <h2 className="text-xl font-black text-white flex items-center gap-2"><Banknote className="w-5 h-5 text-green-400" /> Maskinkontroll</h2>
               <button onClick={() => setShowAdminPanel(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Cash in Machine', value: `${((account.cash_balance || 0) + sessionStats.cash).toLocaleString()} kr`, icon: DollarSign, color: 'text-green-400' },
-                { label: 'Card Collected', value: `${((account.card_balance || 0) + sessionStats.card).toLocaleString()} kr`, icon: CreditCard, color: 'text-blue-400' },
-                { label: 'Session Txns', value: sessionStats.txns, icon: BarChart2, color: 'text-purple-400' },
-                { label: 'Total All Time', value: (account.total_transactions || 0) + sessionStats.txns, icon: BarChart2, color: 'text-amber-400' },
+                { label: 'Kontanter i maskin', value: `${((account.cash_balance || 0) + sessionStats.cash).toLocaleString()} kr`, icon: Banknote, color: 'text-green-400' },
+                { label: 'Kortbetaling', value: `${((account.card_balance || 0) + sessionStats.card).toLocaleString()} kr`, icon: CreditCard, color: 'text-blue-400' },
+                { label: 'Transaksjoner i dag', value: sessionStats.txns, icon: BarChart2, color: 'text-purple-400' },
+                { label: 'Totalt alle transaksjoner', value: (account.total_transactions || 0) + sessionStats.txns, icon: BarChart2, color: 'text-amber-400' },
               ].map(s => (
                 <div key={s.label} className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center">
                   <s.icon className={`w-5 h-5 ${s.color} mx-auto mb-2`} />
@@ -301,8 +301,8 @@ export default function TicketMachine() {
                 </div>
               ))}
             </div>
-            <p className="text-slate-500 text-xs text-center">Cash can only be emptied from the Admin Office. Session data will sync on next refresh.</p>
-            <Button onClick={() => setShowAdminPanel(false)} className="w-full bg-slate-700 hover:bg-slate-600">Close</Button>
+            <p className="text-slate-500 text-xs text-center">Kassen tømmes fra Admin-portalen. Sesjonsdata synkroniseres ved neste innlasting.</p>
+            <Button onClick={() => setShowAdminPanel(false)} className="w-full bg-slate-700 hover:bg-slate-600">Lukk</Button>
           </div>
         </div>
       )}
