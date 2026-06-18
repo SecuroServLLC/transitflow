@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Plus, Pencil, Trash2, Copy, CheckCheck } from 'lucide-react';
+import { MapPin, Plus, Pencil, Search, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 
 const LOCATION_TYPES = {
   terminal: 'Terminal',
@@ -17,19 +17,22 @@ const LOCATION_TYPES = {
   other: 'Annet'
 };
 
-const DEFAULT_LOCATIONS = [
-  { name: 'Kundesenter Skyss Bergen', address: 'Strømgaten 8', city: 'Bergen', zip: '5008', location_type: 'office' },
-  { name: 'Bergen Busstasjon', address: 'Strømgaten 8', city: 'Bergen', zip: '5008', location_type: 'terminal' },
-  { name: 'Nonneseter', address: 'Kaigaten', city: 'Bergen', zip: '5014', location_type: 'tram_stop' },
-  { name: 'Byparken', address: 'Olav Kyrres gate', city: 'Bergen', zip: '5014', location_type: 'tram_stop' },
-];
+const TYPE_COLORS = {
+  terminal: 'bg-blue-100 text-blue-700',
+  bus_stop: 'bg-green-100 text-green-700',
+  tram_stop: 'bg-purple-100 text-purple-700',
+  depot: 'bg-orange-100 text-orange-700',
+  office: 'bg-gray-100 text-gray-700',
+  other: 'bg-slate-100 text-slate-600',
+};
 
 export default function LocationsManager() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [bulkText, setBulkText] = useState('');
-  const [form, setForm] = useState({ name: '', address: '', city: 'Bergen', zip: '', location_type: 'terminal' });
+  const [search, setSearch] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const [dupWarning, setDupWarning] = useState('');
+  const [form, setForm] = useState({ name: '', address: '', city: 'Bergen', zip: '', location_type: 'bus_stop', notes: '' });
   const qc = useQueryClient();
 
   const { data: locations = [] } = useQuery({
@@ -42,93 +45,108 @@ export default function LocationsManager() {
       if (editing) return base44.entities.Location.update(editing.id, data);
       return base44.entities.Location.create(data);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['locations'] }); setModalOpen(false); setEditing(null); }
-  });
-
-  const del = useMutation({
-    mutationFn: (id) => base44.entities.Location.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['locations'] })
-  });
-
-  const bulkCreate = useMutation({
-    mutationFn: async (items) => {
-      for (const item of items) {
-        await base44.entities.Location.create(item);
-      }
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['locations'] }); setBulkOpen(false); setBulkText(''); }
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['locations'] }); setModalOpen(false); setEditing(null); setDupWarning(''); }
   });
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ name: '', address: 'Strømgaten 8', city: 'Bergen', zip: '5008', location_type: 'terminal' });
+    setForm({ name: '', address: '', city: 'Bergen', zip: '', location_type: 'bus_stop', notes: '' });
+    setDupWarning('');
     setModalOpen(true);
   };
 
   const openEdit = (loc) => {
     setEditing(loc);
-    setForm({ name: loc.name, address: loc.address || '', city: loc.city || '', zip: loc.zip || '', location_type: loc.location_type || 'terminal' });
+    setForm({ name: loc.name, address: loc.address || '', city: loc.city || '', zip: loc.zip || '', location_type: loc.location_type || 'bus_stop', notes: loc.notes || '' });
+    setDupWarning('');
     setModalOpen(true);
   };
 
-  const parseBulk = () => {
-    const lines = bulkText.split('\n').map(l => l.trim()).filter(Boolean);
-    return lines.map(line => {
-      const parts = line.split(',').map(s => s.trim());
-      return {
-        name: parts[0] || line,
-        address: parts[1] || 'Strømgaten 8',
-        city: parts[2] || 'Bergen',
-        zip: parts[3] || '5008',
-        location_type: parts[4] || 'terminal',
-        is_active: true
-      };
-    });
+  const checkDuplicate = (name) => {
+    const normalized = name.trim().toLowerCase();
+    const existing = locations.find(l => l.name.trim().toLowerCase() === normalized && (!editing || l.id !== editing.id));
+    setDupWarning(existing ? `⚠️ En lokasjon med navn "${existing.name}" finnes allerede!` : '');
   };
 
-  const addDefaultLocations = () => {
-    bulkCreate.mutate(DEFAULT_LOCATIONS);
+  const handleSubmit = () => {
+    if (dupWarning) return;
+    upsert.mutate({ ...form, is_active: true });
   };
+
+  // Group by notes field (used as zone/area)
+  const filtered = locations.filter(l =>
+    !search || l.name.toLowerCase().includes(search.toLowerCase()) || (l.city || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const grouped = {};
+  filtered.forEach(loc => {
+    const group = loc.notes || 'Ukategorisert';
+    if (!grouped[group]) grouped[group] = [];
+    grouped[group].push(loc);
+  });
+  const groupKeys = Object.keys(grouped).sort();
+
+  const toggleGroup = (k) => setExpandedGroups(prev => ({ ...prev, [k]: prev[k] === false ? true : false }));
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold flex items-center gap-2"><MapPin className="w-5 h-5" /> Lokasjoner</h2>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}><Copy className="w-4 h-4 mr-1" /> Bulk-opprett</Button>
-          <Button size="sm" onClick={openAdd}><Plus className="w-4 h-4 mr-1" /> Ny lokasjon</Button>
-        </div>
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <MapPin className="w-5 h-5" /> Lokasjoner
+          <Badge variant="outline">{locations.length}</Badge>
+        </h2>
+        <Button size="sm" onClick={openAdd}><Plus className="w-4 h-4 mr-1" /> Ny lokasjon</Button>
+      </div>
+
+      <div className="relative mb-4">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Søk etter navn eller by..." className="pl-9" />
       </div>
 
       {locations.length === 0 && (
         <div className="text-center py-12 text-gray-400">
           <MapPin className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="mb-4">Ingen lokasjoner ennå</p>
-          <Button variant="outline" onClick={addDefaultLocations}>
-            <CheckCheck className="w-4 h-4 mr-2" /> Legg til Skyss Bergen-lokasjoner
-          </Button>
+          <p>Ingen lokasjoner ennå. Klikk "Ny lokasjon" for å begynne, eller bruk Root-siden for masseimport.</p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {locations.map(loc => (
-          <div key={loc.id} className="border rounded-lg p-4 flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-medium">{loc.name}</span>
-                <Badge variant="outline" className="text-xs">{LOCATION_TYPES[loc.location_type] || loc.location_type}</Badge>
-              </div>
-              {loc.address && <p className="text-sm text-gray-500">{loc.address}, {loc.zip} {loc.city}</p>}
+      <div className="space-y-2">
+        {groupKeys.map(group => {
+          const items = grouped[group];
+          const isOpen = expandedGroups[group] !== false;
+          return (
+            <div key={group} className="border rounded-lg overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                onClick={() => toggleGroup(group)}
+              >
+                <div className="flex items-center gap-2">
+                  {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                  <span className="font-medium text-sm">{group}</span>
+                  <Badge variant="outline" className="text-xs">{items.length}</Badge>
+                </div>
+              </button>
+              {isOpen && (
+                <div className="divide-y">
+                  {items.map(loc => (
+                    <div key={loc.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${TYPE_COLORS[loc.location_type] || 'bg-gray-100 text-gray-600'}`}>
+                          {LOCATION_TYPES[loc.location_type] || loc.location_type}
+                        </span>
+                        <span className="font-medium text-sm truncate">{loc.name}</span>
+                        {loc.address && <span className="text-xs text-gray-400 hidden md:block">{loc.address}</span>}
+                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => openEdit(loc)}><Pencil className="w-3.5 h-3.5" /></Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="flex gap-1 shrink-0">
-              <Button size="icon" variant="ghost" onClick={() => openEdit(loc)}><Pencil className="w-4 h-4" /></Button>
-              <Button size="icon" variant="ghost" onClick={() => del.mutate(loc.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Add/Edit modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -136,8 +154,25 @@ export default function LocationsManager() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Navn</Label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="f.eks. Bergen Busstasjon" />
+              <Label>Navn *</Label>
+              <Input
+                value={form.name}
+                onChange={e => { setForm(f => ({ ...f, name: e.target.value })); checkDuplicate(e.target.value); }}
+                placeholder="f.eks. Bergen Busstasjon"
+              />
+              {dupWarning && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-orange-600">
+                  <AlertTriangle className="w-3 h-3" /> {dupWarning}
+                </div>
+              )}
+            </div>
+            <div>
+              <Label>Type</Label>
+              <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.location_type} onChange={e => setForm(f => ({ ...f, location_type: e.target.value }))}>
+                {Object.entries(LOCATION_TYPES).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <Label>Adresse (valgfri)</Label>
@@ -154,43 +189,12 @@ export default function LocationsManager() {
               </div>
             </div>
             <div>
-              <Label>Type</Label>
-              <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.location_type} onChange={e => setForm(f => ({ ...f, location_type: e.target.value }))}>
-                {Object.entries(LOCATION_TYPES).map(([val, label]) => (
-                  <option key={val} value={val}>{label}</option>
-                ))}
-              </select>
+              <Label>Sone / Område (brukes til gruppering)</Label>
+              <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="f.eks. Sentrum, Fana, Åsane..." />
             </div>
-            <Button className="w-full" onClick={() => upsert.mutate(form)} disabled={!form.name || upsert.isPending}>
+            <Button className="w-full" onClick={handleSubmit} disabled={!form.name || !!dupWarning || upsert.isPending}>
               {editing ? 'Lagre endringer' : 'Opprett lokasjon'}
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Bulk modal */}
-      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Bulk-opprett lokasjoner</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-gray-500">En lokasjon per linje. Format: <code className="bg-gray-100 px-1 rounded">Navn, Adresse, By, Postnr, Type</code></p>
-            <p className="text-xs text-gray-400">Eksempel: Bergen Busstasjon, Strømgaten 8, Bergen, 5008, terminal</p>
-            <textarea
-              className="w-full border rounded-md p-3 text-sm font-mono h-40"
-              value={bulkText}
-              onChange={e => setBulkText(e.target.value)}
-              placeholder={"Bergen Busstasjon, Strømgaten 8, Bergen, 5008, terminal\nNonneseter, Kaigaten, Bergen, 5014, tram_stop"}
-            />
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={addDefaultLocations} disabled={bulkCreate.isPending}>
-                Bruk Skyss Bergen-standard
-              </Button>
-              <Button className="flex-1" onClick={() => bulkCreate.mutate(parseBulk())} disabled={!bulkText.trim() || bulkCreate.isPending}>
-                {bulkCreate.isPending ? 'Oppretter...' : `Opprett ${parseBulk().length} lokasjoner`}
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
