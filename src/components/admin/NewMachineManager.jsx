@@ -43,6 +43,10 @@ function getNextSuffix(machines, parentId) {
 export default function NewMachineManager() {
   const [modalOpen, setModalOpen] = useState(false);
   const [cashModalOpen, setCashModalOpen] = useState(false);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkForm, setBulkForm] = useState({ machine_type: 'tvm', location_id: '', location_name: '', terminal: '', count: 5, namePrefix: '' });
+  const [bulkPreview, setBulkPreview] = useState([]);
+  const [bulkDone, setBulkDone] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState(null);
   const [editing, setEditing] = useState(null);
   const [expandedLocations, setExpandedLocations] = useState({});
@@ -129,6 +133,54 @@ export default function NewMachineManager() {
     upsert.mutate(data);
   };
 
+  const bulkCreate = useMutation({
+    mutationFn: async (items) => {
+      for (const item of items) {
+        await base44.entities.MachineAccount.create(item);
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['machines'] }); setBulkDone(true); }
+  });
+
+  const generateBulkPreview = () => {
+    const { machine_type, location_id, location_name, terminal, count, namePrefix } = bulkForm;
+    const [min, max] = getIdRange(machine_type);
+    const usedIds = machines
+      .filter(m => m.machine_type === machine_type)
+      .map(m => parseInt(m.machine_id))
+      .filter(n => !isNaN(n));
+    
+    const items = [];
+    let nextId = min;
+    let found = 0;
+    while (nextId <= max && found < count) {
+      if (!usedIds.includes(nextId) && !items.some(i => parseInt(i.machine_id) === nextId)) {
+        const prefix = namePrefix || (machine_type === 'bus' ? 'Buss' : 'Automat');
+        items.push({
+          name: `${prefix} ${nextId}`,
+          machine_type,
+          machine_id: nextId.toString(),
+          location_id,
+          location_name,
+          terminal,
+          access_pin: generatePin(),
+          is_active: true,
+          force_locked: false
+        });
+        found++;
+      }
+      nextId++;
+    }
+    setBulkPreview(items);
+  };
+
+  const openBulk = () => {
+    setBulkDone(false);
+    setBulkPreview([]);
+    setBulkForm({ machine_type: 'tvm', location_id: locations[0]?.id || '', location_name: locations[0]?.name || '', terminal: '', count: 5, namePrefix: '' });
+    setBulkModalOpen(true);
+  };
+
   // Group by location
   const byLocation = {};
   machines.forEach(m => {
@@ -153,7 +205,10 @@ export default function NewMachineManager() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold flex items-center gap-2"><Monitor className="w-5 h-5" /> Maskiner</h2>
-        <Button size="sm" onClick={openAdd} disabled={locations.length === 0}><Plus className="w-4 h-4 mr-1" /> Ny maskin</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={openBulk} disabled={locations.length === 0}><Plus className="w-4 h-4 mr-1" /> Bulk opprett</Button>
+          <Button size="sm" onClick={openAdd} disabled={locations.length === 0}><Plus className="w-4 h-4 mr-1" /> Ny maskin</Button>
+        </div>
       </div>
 
       {locations.length === 0 && (
@@ -310,6 +365,77 @@ export default function NewMachineManager() {
               {editing ? 'Lagre endringer' : 'Opprett maskin'}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk create modal */}
+      <Dialog open={bulkModalOpen} onOpenChange={(o) => { if (!o) { setBulkModalOpen(false); setBulkDone(false); setBulkPreview([]); } }}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Bulk opprett maskiner</DialogTitle>
+          </DialogHeader>
+          {bulkDone ? (
+            <div className="text-center py-6 space-y-3">
+              <p className="text-green-600 font-bold text-lg">✅ {bulkPreview.length} maskiner opprettet!</p>
+              <Button className="w-full" onClick={() => { setBulkModalOpen(false); setBulkDone(false); setBulkPreview([]); }}>Lukk</Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Maskintype</Label>
+                  <select className="w-full border rounded-md px-3 py-2 text-sm" value={bulkForm.machine_type}
+                    onChange={e => { setBulkForm(f => ({ ...f, machine_type: e.target.value })); setBulkPreview([]); }}>
+                    <option value="bus">Buss (1000–4000)</option>
+                    <option value="tvm">Automat TVM (5000–8000)</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Antall</Label>
+                  <Input type="number" min={1} max={100} value={bulkForm.count}
+                    onChange={e => { setBulkForm(f => ({ ...f, count: parseInt(e.target.value) || 1 })); setBulkPreview([]); }} />
+                </div>
+              </div>
+              <div>
+                <Label>Lokasjon</Label>
+                <select className="w-full border rounded-md px-3 py-2 text-sm" value={bulkForm.location_id}
+                  onChange={e => { const loc = locations.find(l => l.id === e.target.value); setBulkForm(f => ({ ...f, location_id: e.target.value, location_name: loc?.name || '' })); setBulkPreview([]); }}>
+                  <option value="">— Velg lokasjon —</option>
+                  {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Navnprefiks (valgfri)</Label>
+                  <Input value={bulkForm.namePrefix} onChange={e => { setBulkForm(f => ({ ...f, namePrefix: e.target.value })); setBulkPreview([]); }} placeholder="f.eks. Bergen" />
+                </div>
+                <div>
+                  <Label>Terminal (valgfri)</Label>
+                  <Input value={bulkForm.terminal} onChange={e => { setBulkForm(f => ({ ...f, terminal: e.target.value })); setBulkPreview([]); }} placeholder="f.eks. Terminal A" />
+                </div>
+              </div>
+              <Button variant="outline" className="w-full" onClick={generateBulkPreview}>Forhåndsvis</Button>
+
+              {bulkPreview.length > 0 && (
+                <>
+                  <div className="max-h-48 overflow-y-auto border rounded-lg divide-y text-sm">
+                    {bulkPreview.map((m, i) => (
+                      <div key={i} className="flex justify-between items-center px-3 py-2">
+                        <div>
+                          <span className="font-mono font-bold text-blue-700 mr-2">{m.machine_id}</span>
+                          <span>{m.name}</span>
+                        </div>
+                        <span className="font-mono text-xs text-gray-400">{m.access_pin}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => bulkCreate.mutate(bulkPreview)} disabled={bulkCreate.isPending}>
+                    {bulkCreate.isPending ? 'Oppretter...' : `Opprett ${bulkPreview.length} maskiner`}
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
