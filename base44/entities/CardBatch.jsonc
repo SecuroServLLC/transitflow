@@ -1,0 +1,76 @@
+{
+  "name": "CardBatch",
+  "type": "object",
+  "properties": {
+    "batch_id": {
+      "type": "string",
+      "title": "Batch ID"
+    },
+    "retailer_id": {
+      "type": "string",
+      "title": "Retailer ID"
+    },
+    "retailer_name": {
+      "type": "string",
+      "title": "Retailer Name"
+    },
+    "ticket_type": {
+      "type": "string",
+      "enum": [
+        "adult",
+        "child",
+        "senior",
+        "student",
+        "military"
+      ],
+      "title": "Ticket Type",
+      "default": "adult"
+    },
+    "ticket_category": {
+      "type": "string",
+      "enum": [
+        "single",
+        "period"
+      ],
+      "title": "Ticket Category",
+      "default": "single"
+    },
+    "quantity": {
+      "type": "number",
+      "title": "Quantity",
+      "default": 50
+    },
+    "face_value_kr": {
+      "type": "number",
+      "title": "Face Value per Card (kr)"
+    },
+    "paid_kr": {
+      "type": "number",
+      "title": "Total Paid (kr)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "issued",
+        "cancelled"
+      ],
+      "title": "Status",
+      "default": "pending"
+    },
+    "issued_at": {
+      "type": "string",
+      "title": "Issued At"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "batch_id",
+    "retailer_id",
+    "ticket_type",
+    "status"
+  ]
+}

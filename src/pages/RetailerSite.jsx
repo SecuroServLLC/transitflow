@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Store, ShoppingBag, History, Printer, LogOut, TrendingUp } from 'lucide-react';
+import { Store, ShoppingBag, History, Printer, LogOut, TrendingUp, Package, CheckCircle2 } from 'lucide-react';
 import LSTLogo from '@/components/LSTLogo';
 import { toast } from 'sonner';
 
@@ -24,6 +24,9 @@ export default function RetailerSite() {
   const [recipientPhone, setRecipientPhone] = useState('');
   const [issuedTicket, setIssuedTicket] = useState(null);
   const [tab, setTab] = useState('sell');
+  const [batchType, setBatchType] = useState('adult');
+  const [batchCategory, setBatchCategory] = useState('single');
+  const [orderDone, setOrderDone] = useState(null);
   const qc = useQueryClient();
 
   const { data: retailers = [] } = useQuery({
@@ -36,6 +39,24 @@ export default function RetailerSite() {
     queryKey: ['retailer-tickets', retailer?.id],
     queryFn: () => base44.entities.Ticket.filter({ purchase_method: 'retailer', issued_by: retailer?.name }),
     enabled: !!retailer && tab === 'ledger'
+  });
+
+  const { data: myBatches = [] } = useQuery({
+    queryKey: ['retailer-batches', retailer?.id],
+    queryFn: () => base44.entities.CardBatch.filter({ retailer_id: retailer?.id }),
+    enabled: !!retailer && tab === 'cards'
+  });
+
+  const { data: myCards = [] } = useQuery({
+    queryKey: ['retailer-cards', retailer?.id],
+    queryFn: () => base44.entities.OneTimeCard.filter({ retailer_id: retailer?.id, status: 'unused' }),
+    enabled: !!retailer && tab === 'cards'
+  });
+
+  const { data: pricing = [] } = useQuery({
+    queryKey: ['pricing'],
+    queryFn: () => base44.entities.Pricing.list(),
+    enabled: !!retailer
   });
 
   const login = () => {
@@ -52,6 +73,68 @@ export default function RetailerSite() {
   const faceValue = selectedType?.price || 100;
   const commission = retailer?.commission_rate || 5;
   const settlementPrice = +(faceValue * (1 - commission / 100)).toFixed(2);
+
+  // Batch ordering
+  const getPriceForBatch = () => {
+    const p = pricing.find(p => p.ticket_type === batchType);
+    return batchCategory === 'period' ? (p?.period_credit_cost || 200) : (p?.credit_cost || 90);
+  };
+  const batchFaceValue = getPriceForBatch();
+  const batchRetailerPrice = +(batchFaceValue * 0.9 * 50).toFixed(0); // 50 cards at 90%
+
+  function genCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+
+  const orderBatch = useMutation({
+    mutationFn: async () => {
+      const batchId = `B-${Date.now().toString(36).toUpperCase()}`;
+      const now = new Date().toISOString();
+      const fv = batchFaceValue;
+      const paidPer = +(fv * 0.9).toFixed(2);
+
+      // Create batch record
+      await base44.entities.CardBatch.create({
+        batch_id: batchId,
+        retailer_id: retailer.id,
+        retailer_name: retailer.name,
+        ticket_type: batchType,
+        ticket_category: batchCategory,
+        quantity: 50,
+        face_value_kr: fv,
+        paid_kr: +(paidPer * 50).toFixed(0),
+        status: 'issued',
+        issued_at: now
+      });
+
+      // Generate 50 unique codes
+      const codes = new Set();
+      while (codes.size < 50) codes.add(genCode());
+
+      for (const code of codes) {
+        await base44.entities.OneTimeCard.create({
+          code,
+          batch_id: batchId,
+          retailer_id: retailer.id,
+          retailer_name: retailer.name,
+          ticket_type: batchType,
+          ticket_category: batchCategory,
+          status: 'unused',
+          face_value_kr: fv,
+          paid_by_retailer_kr: paidPer
+        });
+      }
+      return { batchId, codes: [...codes] };
+    },
+    onSuccess: (data) => {
+      setOrderDone(data);
+      qc.invalidateQueries({ queryKey: ['retailer-batches'] });
+      qc.invalidateQueries({ queryKey: ['retailer-cards'] });
+    }
+  });
 
   const sellMutation = useMutation({
     mutationFn: async () => {
@@ -161,7 +244,7 @@ export default function RetailerSite() {
       <div className="max-w-4xl mx-auto w-full p-6 space-y-5">
         {/* Tabs */}
         <div className="flex gap-2">
-          {[['sell', '🎫 Sell Ticket'], ['ledger', '📊 Sales Ledger']].map(([id, label]) => (
+          {[['sell', '🎫 Selg billett'], ['cards', '📦 Kortpakker'], ['ledger', '📊 Salgslogg']].map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === id ? 'bg-[#c0392b] text-white' : 'bg-[#111] text-slate-400 hover:text-white border border-slate-800'}`}>
               {label}
@@ -228,6 +311,78 @@ export default function RetailerSite() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {tab === 'cards' && (
+          <div className="space-y-5">
+            {orderDone ? (
+              <div className="bg-[#111] border border-green-700 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-7 h-7 text-green-400" />
+                  <div>
+                    <h3 className="font-bold text-green-400 text-lg">Kortpakke bestilt!</h3>
+                    <p className="text-slate-400 text-sm">Batch ID: <span className="font-mono">{orderDone.batchId}</span></p>
+                  </div>
+                </div>
+                <p className="text-slate-300 text-sm">50 koder er nå registrert i systemet. Kunder kan bruke disse på app, nettside eller maskin.</p>
+                <div className="grid grid-cols-5 gap-2 max-h-64 overflow-y-auto">
+                  {orderDone.codes.map(c => (
+                    <div key={c} className="font-mono text-xs bg-[#0a0a0a] border border-slate-700 rounded px-2 py-1.5 text-center text-green-300">{c}</div>
+                  ))}
+                </div>
+                <Button className="w-full bg-slate-700 hover:bg-slate-600" onClick={() => setOrderDone(null)}>Bestill ny pakke</Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="bg-[#111] border border-slate-800 rounded-2xl p-5 space-y-4">
+                  <h3 className="font-bold flex items-center gap-2"><Package className="w-4 h-4 text-[#c0392b]" /> Bestill ny kortpakke</h3>
+                  <div className="flex gap-2">
+                    {['single', 'period'].map(v => (
+                      <button key={v} onClick={() => setBatchCategory(v)}
+                        className={`flex-1 py-2.5 border-2 rounded-xl text-xs font-bold transition-all ${batchCategory === v ? 'border-[#c0392b] bg-[#c0392b]/10 text-[#e74c3c]' : 'border-slate-700 text-slate-400'}`}>
+                        {v === 'single' ? '🎫 Enkeltbillett' : '📅 Periodebillett 30d'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[['adult','Voksen'],['child','Barn'],['student','Student'],['senior','Honnør'],['military','Militær']].map(([val, label]) => (
+                      <button key={val} onClick={() => setBatchType(val)}
+                        className={`py-2 border-2 rounded-xl text-xs font-medium transition-all ${batchType === val ? 'border-[#c0392b] bg-[#c0392b]/10 text-[#e74c3c]' : 'border-slate-700 text-slate-400'}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="bg-[#0a0a0a] rounded-xl p-4 space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-slate-400">Antall koder</span><span className="font-bold">50 stk</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Pålydende per kode</span><span className="font-bold">{batchFaceValue} kr</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Din pris (90%)</span><span className="font-bold text-green-400">{+(batchFaceValue * 0.9).toFixed(2)} kr / stk</span></div>
+                    <div className="flex justify-between border-t border-slate-800 pt-2 mt-1 text-base">
+                      <span className="text-white font-bold">Totalt å betale</span>
+                      <span className="font-black text-[#c0392b] text-lg">{batchRetailerPrice} kr</span>
+                    </div>
+                  </div>
+                  <Button onClick={() => orderBatch.mutate()} disabled={orderBatch.isPending} className="w-full bg-[#c0392b] hover:bg-[#a93226] font-bold h-12">
+                    {orderBatch.isPending ? 'Genererer koder...' : '📦 Bestill 50 koder'}
+                  </Button>
+                </div>
+
+                <div className="bg-[#111] border border-slate-800 rounded-2xl p-5 space-y-3">
+                  <h3 className="font-bold text-slate-300">Mine kortpakker</h3>
+                  {myBatches.length === 0 && <p className="text-slate-600 text-sm text-center py-8">Ingen pakker bestilt ennå</p>}
+                  {myBatches.map(b => (
+                    <div key={b.id} className="bg-[#0a0a0a] border border-slate-800 rounded-xl p-3 text-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono text-xs text-slate-400">{b.batch_id}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${b.status === 'issued' ? 'bg-green-900 text-green-400' : 'bg-gray-800 text-gray-500'}`}>{b.status}</span>
+                      </div>
+                      <p className="text-slate-300 mt-1">{b.quantity} × {b.ticket_type} {b.ticket_category}</p>
+                      <p className="text-slate-500 text-xs">{new Date(b.created_date).toLocaleDateString('nb-NO')} · {b.paid_kr} kr betalt</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

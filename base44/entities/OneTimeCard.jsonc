@@ -1,0 +1,76 @@
+{
+  "name": "OneTimeCard",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "title": "Code (8 chars)"
+    },
+    "batch_id": {
+      "type": "string",
+      "title": "Batch ID"
+    },
+    "retailer_id": {
+      "type": "string",
+      "title": "Retailer ID"
+    },
+    "retailer_name": {
+      "type": "string",
+      "title": "Retailer Name"
+    },
+    "ticket_type": {
+      "type": "string",
+      "enum": [
+        "adult",
+        "child",
+        "senior",
+        "student",
+        "military"
+      ],
+      "title": "Ticket Type",
+      "default": "adult"
+    },
+    "ticket_category": {
+      "type": "string",
+      "enum": [
+        "single",
+        "period"
+      ],
+      "title": "Ticket Category",
+      "default": "single"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unused",
+        "redeemed",
+        "cancelled"
+      ],
+      "title": "Status",
+      "default": "unused"
+    },
+    "redeemed_at": {
+      "type": "string",
+      "title": "Redeemed At"
+    },
+    "redeemed_by_ticket_id": {
+      "type": "string",
+      "title": "Redeemed \u2014 Ticket ID"
+    },
+    "face_value_kr": {
+      "type": "number",
+      "title": "Face Value (kr)",
+      "default": 0
+    },
+    "paid_by_retailer_kr": {
+      "type": "number",
+      "title": "Paid by Retailer (kr)",
+      "default": 0
+    }
+  },
+  "required": [
+    "code",
+    "batch_id",
+    "status"
+  ]
+}

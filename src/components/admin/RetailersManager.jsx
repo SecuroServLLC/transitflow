@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Pencil, Trash2, Store } from 'lucide-react';
+import { Plus, Pencil, Trash2, Store, Package } from 'lucide-react';
 import { toast } from 'sonner';
 
 const EMPTY = { name: '', contact_name: '', email: '', phone: '', address: '', commission_rate: 5, is_active: true, notes: '' };
@@ -65,7 +65,7 @@ export default function RetailersManager() {
               {r.address && <p>📍 {r.address}</p>}
             </div>
             <div className="flex items-center justify-between pt-1">
-              <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">{r.commission_rate||5}% commission</span>
+            <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">90% innkjøpspris</span>
               <div className="flex gap-1">
                 <Button size="sm" variant="ghost" onClick={() => openEdit(r)}><Pencil className="w-4 h-4" /></Button>
                 <Button size="sm" variant="ghost" onClick={() => { if(confirm('Delete retailer?')) del.mutate(r.id); }}><Trash2 className="w-4 h-4 text-red-400" /></Button>
