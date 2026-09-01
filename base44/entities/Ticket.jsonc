@@ -71,6 +71,10 @@
       "type": "string",
       "title": "Purchased At"
     },
+    "activated_at": {
+      "type": "string",
+      "title": "Activated At"
+    },
     "used_at": {
       "type": "string",
       "title": "Used At"

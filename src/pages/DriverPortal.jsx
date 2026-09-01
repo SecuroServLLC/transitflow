@@ -7,6 +7,8 @@ import { CheckCircle2, XCircle, LogOut, Search, Bus, Clock, AlertTriangle } from
 import LSTLogo from '@/components/LSTLogo';
 import { toast } from 'sonner';
 import { getUnifiedSession, clearUnifiedSession } from '@/utils/unifiedAuth';
+import { ticketState, activateTicket } from '@/utils/ticketActivation';
+import ScanView from '@/components/scanner/ScanView';
 
 export default function DriverPortal() {
   const [step, setStep] = useState(() => {
@@ -51,25 +53,30 @@ export default function DriverPortal() {
     else toast.error('Invalid credentials');
   };
 
-  const validate = () => {
-    const q = code.trim().toUpperCase();
-    if (!q) return;
-    const ticket = tickets.find(t =>
-      t.short_code?.toUpperCase() === q ||
-      t.ticket_id?.toUpperCase() === q
-    );
-    if (!ticket) { setResult({ valid: false, reason: 'Not found' }); addLog(null, 'Not Found'); return; }
+  const handleScan = async (qr) => {
+    const token = String(qr).trim();
+    const list = await base44.entities.Ticket.filter({ qr_token: token });
+    const ticket = list[0];
+    if (!ticket) { setResult({ valid: false, reason: 'Billett ikke funnet' }); addLog(null, 'Ikke funnet'); return; }
     const now = new Date();
     if (ticket.ticket_category === 'period') {
       const valid = ticket.valid_until && new Date(ticket.valid_until) >= now;
-      const r = { valid, ticket, msg: valid ? `Period pass valid until ${new Date(ticket.valid_until).toLocaleDateString()}` : 'Period pass expired' };
-      setResult(r); addLog(ticket, valid ? 'Valid' : 'Expired'); return;
+      setResult({ valid, ticket, msg: valid ? `Periodebillett — gyldig til ${new Date(ticket.valid_until).toLocaleDateString('nb-NO')}` : 'Periodebillett utgått' });
+      addLog(ticket, valid ? 'Gyldig' : 'Utgått'); return;
     }
-    if (ticket.status === 'used') { setResult({ valid: false, reason: 'Already used', ticket }); addLog(ticket, 'Duplicate'); return; }
-    if (ticket.status === 'expired') { setResult({ valid: false, reason: 'Expired', ticket }); addLog(ticket, 'Expired'); return; }
-    markUsed.mutate(ticket.id);
-    setResult({ valid: true, ticket, msg: 'Single ticket accepted ✓' });
-    addLog(ticket, 'Accepted');
+    const st = ticketState(ticket, now);
+    if (st === 'inactive') {
+      const updated = await activateTicket(ticket);
+      setResult({ valid: true, ticket: updated, msg: 'AKTIVERT — gyldig 5 min', activated: true });
+      addLog(updated, 'Aktivert');
+    } else if (st === 'active') {
+      setResult({ valid: true, ticket, msg: `Allerede aktiv — gyldig til ${new Date(ticket.valid_until).toLocaleTimeString('nb-NO')}` });
+      addLog(ticket, 'Allerede aktiv');
+    } else {
+      const reason = st === 'used' ? 'Allerede brukt' : 'Utgått';
+      setResult({ valid: false, reason, ticket });
+      addLog(ticket, reason);
+    }
   };
 
   const addLog = (ticket, status) => {
@@ -125,12 +132,9 @@ export default function DriverPortal() {
           {!result ? (
             <div className="w-full max-w-sm space-y-5 text-center">
               <Bus className="w-16 h-16 text-[#c0392b] mx-auto" />
-              <h2 className="text-2xl font-black">Validate Boarding</h2>
-              <p className="text-slate-500 text-sm">Enter the passenger's ticket code</p>
-              <Input placeholder="Short code or Ticket ID" value={code} onChange={e => setCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === 'Enter' && validate()} className="bg-[#111] border-slate-700 text-white text-center text-xl font-mono h-16 tracking-widest" />
-              <Button onClick={validate} className="w-full h-14 bg-[#c0392b] hover:bg-[#a93226] text-lg font-bold">
-                <Search className="w-5 h-5 mr-2" /> Validate
-              </Button>
+              <h2 className="text-2xl font-black">Aktiver billett</h2>
+              <p className="text-slate-500 text-sm">Skann passasjerens QR-kode for å aktivere (gyldig 5 min)</p>
+              <ScanView onScan={handleScan} placeholder="QR-token eller kode" />
             </div>
           ) : (
             <div className="w-full max-w-sm space-y-4 text-center">

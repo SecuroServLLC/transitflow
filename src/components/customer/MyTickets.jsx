@@ -13,7 +13,10 @@ export default function MyTickets({ customer }) {
   const now = new Date();
   const active = tickets.filter(t => {
     if (t.ticket_category === 'period') return !t.valid_until || new Date(t.valid_until) > now;
-    return t.status === 'unused';
+    // single e-ticket: active if unused (not yet activated) or active within window
+    if (t.status === 'unused') return true;
+    if (t.status === 'active') return t.valid_until ? new Date(t.valid_until) > now : true;
+    return false;
   });
   const history = tickets.filter(t => !active.includes(t));
 

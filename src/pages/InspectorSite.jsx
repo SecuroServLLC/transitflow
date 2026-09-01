@@ -8,6 +8,8 @@ import { CheckCircle2, XCircle, LogOut, Search, ShieldAlert, History, Clock } fr
 import LSTLogo from '@/components/LSTLogo';
 import { toast } from 'sonner';
 import { getUnifiedSession, clearUnifiedSession } from '@/utils/unifiedAuth';
+import { ticketState } from '@/utils/ticketActivation';
+import ScanView from '@/components/scanner/ScanView';
 
 export default function InspectorSite() {
   const [step, setStep] = useState(() => {
@@ -57,21 +59,29 @@ export default function InspectorSite() {
     setLocalScans(prev => [{ code: ticket?.short_code || code, passenger: ticket?.customer_name || 'Unknown', type: ticket?.type || '—', status, time: new Date().toLocaleTimeString() }, ...prev].slice(0, 20));
   };
 
-  const validate = () => {
-    const q = code.trim().toUpperCase();
-    if (!q) { toast.error('Enter a code'); return; }
-    const ticket = tickets.find(t => t.short_code?.toUpperCase() === q || t.ticket_id?.toUpperCase() === q || t.qr_token?.substring(0, 8).toUpperCase() === q);
-    if (!ticket) { setResult({ valid: false, reason: 'Ticket not found' }); addLog(null, 'Not Found'); return; }
+  const handleScan = async (qr) => {
+    const token = String(qr).trim();
+    const list = await base44.entities.Ticket.filter({ qr_token: token });
+    const ticket = list[0];
+    if (!ticket) { setResult({ valid: false, reason: 'Billett ikke funnet' }); addLog(null, 'Ikke funnet'); return; }
     const now = new Date();
-    if (ticket.ticket_category === 'period') {
-      const validUntil = ticket.valid_until ? new Date(ticket.valid_until) : null;
-      if (!validUntil || validUntil < now) { setResult({ valid: false, reason: 'Period pass expired', ticket }); addLog(ticket, 'Expired'); return; }
-      setResult({ valid: true, ticket, msg: `Period pass — valid until ${validUntil.toLocaleDateString()}` }); addLog(ticket, 'Valid'); return;
+    const st = ticketState(ticket, now);
+    if (st === 'active') {
+      const msg = ticket.ticket_category === 'period'
+        ? `Periodebillett — gyldig til ${new Date(ticket.valid_until).toLocaleDateString('nb-NO')}`
+        : `Gyldig — aktivert ${ticket.activated_at ? new Date(ticket.activated_at).toLocaleTimeString('nb-NO') : ''}`;
+      setResult({ valid: true, ticket, msg });
+      addLog(ticket, 'Gyldig');
+    } else if (st === 'inactive') {
+      setResult({ valid: false, reason: 'IKKE AKTIVERT — må skannes av sjåfør først', ticket });
+      addLog(ticket, 'Ikke aktivert');
+    } else if (st === 'used') {
+      setResult({ valid: false, reason: 'Allerede brukt', ticket });
+      addLog(ticket, 'Brukt');
+    } else {
+      setResult({ valid: false, reason: 'Utgått', ticket });
+      addLog(ticket, 'Utgått');
     }
-    if (ticket.status === 'used') { setResult({ valid: false, reason: 'Already used', ticket }); addLog(ticket, 'Duplicate'); return; }
-    if (ticket.status === 'expired') { setResult({ valid: false, reason: 'Expired', ticket }); addLog(ticket, 'Expired'); return; }
-    markUsed.mutate(ticket.id);
-    setResult({ valid: true, ticket, msg: 'Single ticket — accepted ✓' }); addLog(ticket, 'Valid');
   };
 
   const genTripID = () => {
@@ -135,10 +145,10 @@ export default function InspectorSite() {
             {!result ? (
               <div className="text-center space-y-5">
                 <Search className="w-16 h-16 text-[#c0392b] mx-auto" />
-                <h2 className="text-2xl font-black">Validate Ticket</h2>
-                <Input placeholder="Short Code or Ticket ID" value={code} onChange={e => setCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === 'Enter' && validate()} className="bg-[#111] border-slate-700 text-white text-center text-xl font-mono h-16 tracking-widest" />
-                <Button onClick={validate} className="w-full h-14 bg-[#c0392b] hover:bg-[#a93226] text-lg font-bold"><Search className="w-5 h-5 mr-2" /> Validate</Button>
-                <p className="text-slate-700 text-xs">{tickets.length} tickets loaded</p>
+                <h2 className="text-2xl font-black">Valider billett</h2>
+                <p className="text-slate-500 text-sm">Skann passasjerens QR-kode</p>
+                <ScanView onScan={handleScan} placeholder="QR-token eller kode" />
+                <p className="text-slate-700 text-xs">{tickets.length} billetter lastet</p>
               </div>
             ) : (
               <div className="space-y-5 text-center">
