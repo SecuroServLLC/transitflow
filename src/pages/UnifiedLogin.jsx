@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import LSTLogo from '@/components/LSTLogo';
 import { detectRole, ROLE_META, ROLE_ROUTES, setUnifiedSession } from '@/utils/unifiedAuth';
-import { setCustomerSession } from '@/utils/customerAuth';
+import { setCustomerSession, validatePin } from '@/utils/customerAuth';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight, Loader2, ChevronRight } from 'lucide-react';
 
@@ -70,7 +70,9 @@ async function authPassenger(id, password) {
   const list = isEmail
     ? await base44.entities.Customer.filter({ email: id.toLowerCase().trim() })
     : await base44.entities.Customer.filter({ phone: id.trim() });
-  const c = list.find(x => x.password === password);
+  const c = isEmail
+    ? list.find(x => x.password === password)
+    : list.find(x => validatePin(x.phone, password));
   if (!c) throw new Error('Feil telefon/e-post eller passord');
   const full = await base44.entities.Customer.filter({ id: c.id });
   const record = full[0] || c;
