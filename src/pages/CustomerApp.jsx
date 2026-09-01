@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import CustomerAuth from '@/components/customer/CustomerAuth';
+import UnifiedLogin from '@/pages/UnifiedLogin';
 import MyTickets from '@/components/customer/MyTickets';
 import BuyTicket from '@/components/customer/BuyTicket';
 import CustomerProfile from '@/components/customer/CustomerProfile';
@@ -23,7 +23,7 @@ export default function CustomerApp() {
     setCustomer(fresh);
   };
 
-  if (!customer) return <CustomerAuth onLogin={handleLogin} />;
+  if (!customer) return <UnifiedLogin onPassengerAuth={handleLogin} />;
 
   const TABS = [
     { id: 'tickets', label: 'Tickets', icon: Ticket },

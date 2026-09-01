@@ -6,12 +6,19 @@ import { Input } from '@/components/ui/input';
 import { CheckCircle2, XCircle, LogOut, Search, Bus, Clock, AlertTriangle } from 'lucide-react';
 import LSTLogo from '@/components/LSTLogo';
 import { toast } from 'sonner';
+import { getUnifiedSession, clearUnifiedSession } from '@/utils/unifiedAuth';
 
 export default function DriverPortal() {
-  const [step, setStep] = useState('login');
+  const [step, setStep] = useState(() => {
+    const s = getUnifiedSession();
+    return (s && s.role === 'driver') ? 'validate' : 'login';
+  });
   const [username, setUsername] = useState('');
   const [accessCode, setAccessCode] = useState('');
-  const [driver, setDriver] = useState(null);
+  const [driver, setDriver] = useState(() => {
+    const s = getUnifiedSession();
+    return (s && s.role === 'driver') ? s.identity : null;
+  });
   const [code, setCode] = useState('');
   const [result, setResult] = useState(null);
   const [localScans, setLocalScans] = useState([]);
@@ -76,7 +83,7 @@ export default function DriverPortal() {
   };
 
   const reset = () => { setCode(''); setResult(null); refetch(); };
-  const logout = () => { setDriver(null); setStep('login'); setResult(null); setLocalScans([]); };
+  const logout = () => { clearUnifiedSession(); setDriver(null); setStep('login'); setResult(null); setLocalScans([]); };
 
   if (step === 'login') {
     return (

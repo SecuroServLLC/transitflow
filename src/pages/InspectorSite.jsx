@@ -7,12 +7,19 @@ import { Label } from '@/components/ui/label';
 import { CheckCircle2, XCircle, LogOut, Search, ShieldAlert, History, Clock } from 'lucide-react';
 import LSTLogo from '@/components/LSTLogo';
 import { toast } from 'sonner';
+import { getUnifiedSession, clearUnifiedSession } from '@/utils/unifiedAuth';
 
 export default function InspectorSite() {
-  const [step, setStep] = useState('username');
+  const [step, setStep] = useState(() => {
+    const s = getUnifiedSession();
+    return (s && s.role === 'inspector') ? 'active' : 'username';
+  });
   const [username, setUsername] = useState('');
   const [accessCode, setAccessCode] = useState('');
-  const [inspector, setInspector] = useState(null);
+  const [inspector, setInspector] = useState(() => {
+    const s = getUnifiedSession();
+    return (s && s.role === 'inspector') ? s.identity : null;
+  });
   const [code, setCode] = useState('');
   const [result, setResult] = useState(null);
   const [overrideReason, setOverrideReason] = useState('');
@@ -75,7 +82,7 @@ export default function InspectorSite() {
   };
 
   const reset = () => { setCode(''); setResult(null); refetch(); };
-  const logout = () => { setInspector(null); setStep('username'); setUsername(''); setAccessCode(''); setCode(''); setResult(null); setLocalScans([]); };
+  const logout = () => { clearUnifiedSession(); setInspector(null); setStep('username'); setUsername(''); setAccessCode(''); setCode(''); setResult(null); setLocalScans([]); };
 
   if (step === 'username') return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
