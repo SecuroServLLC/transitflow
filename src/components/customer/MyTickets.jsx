@@ -1,5 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { QRCodeSVG } from 'qrcode.react';
+import { toast } from 'sonner';
 import TicketCard from './TicketCard';
 import { RefreshCw } from 'lucide-react';
 
@@ -9,6 +12,28 @@ export default function MyTickets({ customer }) {
     queryFn: () => base44.entities.Ticket.filter({ customer_id: customer.id }, '-purchased_at', 100),
     refetchOnMount: true
   });
+
+  const lastActivatedRef = useRef({});
+
+  // Seed known activated_at so we only notify on NEW activations (by driver).
+  useEffect(() => {
+    tickets.forEach(t => { if (t.activated_at) lastActivatedRef.current[t.id] = t.activated_at; });
+  }, [tickets]);
+
+  // Realtime: confirm to customer when a ticket is activated by the driver.
+  useEffect(() => {
+    if (!customer?.id) return;
+    const unsub = base44.entities.Ticket.subscribe((event) => {
+      const t = event.data;
+      if (!t || t.customer_id !== customer.id) return;
+      if (event.type === 'update' && t.status === 'active' && t.activated_at && lastActivatedRef.current[t.id] !== t.activated_at) {
+        lastActivatedRef.current[t.id] = t.activated_at;
+        toast.success('✅ Din billett ble aktivert av sjåfør');
+        refetch();
+      }
+    });
+    return unsub;
+  }, [customer?.id]);
 
   const now = new Date();
   const active = tickets.filter(t => {
@@ -28,6 +53,16 @@ export default function MyTickets({ customer }) {
           <RefreshCw className="w-5 h-5" />
         </button>
       </div>
+
+      {customer?.id && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex flex-col items-center">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Min QR — vis til sjåfør</p>
+          <div className="bg-white p-3 rounded-xl border border-gray-100">
+            <QRCodeSVG value={`CUST:${customer.id}`} size={140} level="M" />
+          </div>
+          <p className="text-xs text-gray-400 mt-2 text-center">Sjåføren skanner denne for å aktivere dine billetter</p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-16">

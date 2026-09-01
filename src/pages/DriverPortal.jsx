@@ -3,11 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, XCircle, LogOut, Search, Bus, Clock, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, XCircle, LogOut, Search, Bus, Clock, AlertTriangle, User } from 'lucide-react';
 import LSTLogo from '@/components/LSTLogo';
 import { toast } from 'sonner';
 import { getUnifiedSession, clearUnifiedSession } from '@/utils/unifiedAuth';
-import { ticketState, activateTicket } from '@/utils/ticketActivation';
+import { ticketState, activateTicket, isFrozen, frozenRemaining, markScanned } from '@/utils/ticketActivation';
 import ScanView from '@/components/scanner/ScanView';
 
 export default function DriverPortal() {
@@ -54,8 +54,10 @@ export default function DriverPortal() {
   };
 
   const handleScan = async (qr) => {
-    const token = String(qr).trim();
-    const list = await base44.entities.Ticket.filter({ qr_token: token });
+    const val = String(qr).trim();
+    // Scanning the passenger's app QR -> show their unused tickets to activate.
+    if (val.startsWith('CUST:')) return openCustomer(val.slice(5));
+    const list = await base44.entities.Ticket.filter({ qr_token: val });
     const ticket = list[0];
     if (!ticket) { setResult({ valid: false, reason: 'Billett ikke funnet' }); addLog(null, 'Ikke funnet'); return; }
     const now = new Date();
@@ -65,18 +67,42 @@ export default function DriverPortal() {
       addLog(ticket, valid ? 'Gyldig' : 'Utgått'); return;
     }
     const st = ticketState(ticket, now);
+    if (isFrozen(ticket, now)) {
+      setResult({ valid: false, reason: `Frossen — vent ${frozenRemaining(ticket, now)}s`, ticket });
+      addLog(ticket, 'Frossen'); return;
+    }
     if (st === 'inactive') {
       const updated = await activateTicket(ticket);
       setResult({ valid: true, ticket: updated, msg: 'AKTIVERT — gyldig 5 min', activated: true });
       addLog(updated, 'Aktivert');
     } else if (st === 'active') {
-      setResult({ valid: true, ticket, msg: `Allerede aktiv — gyldig til ${new Date(ticket.valid_until).toLocaleTimeString('nb-NO')}` });
-      addLog(ticket, 'Allerede aktiv');
+      const updated = await markScanned(ticket);
+      setResult({ valid: true, ticket: updated, msg: `Allerede aktiv — gyldig til ${new Date(updated.valid_until).toLocaleTimeString('nb-NO')}` });
+      addLog(updated, 'Allerede aktiv');
     } else {
       const reason = st === 'used' ? 'Allerede brukt' : 'Utgått';
       setResult({ valid: false, reason, ticket });
       addLog(ticket, reason);
     }
+  };
+
+  const openCustomer = async (customerId) => {
+    try {
+      const customer = await base44.entities.Customer.get(customerId);
+      const unused = await base44.entities.Ticket.filter({ customer_id: customerId, status: 'unused' }, '-purchased_at', 50);
+      const tickets = unused.filter(t => t.ticket_category === 'single');
+      setResult({ type: 'customer', customer, tickets });
+    } catch {
+      setResult({ valid: false, reason: 'Kunde ikke funnet' });
+    }
+  };
+
+  const activateFromCustomer = async (ticket) => {
+    const now = new Date();
+    if (isFrozen(ticket, now)) { toast.error(`Frossen — vent ${frozenRemaining(ticket, now)}s`); return; }
+    const updated = await activateTicket(ticket);
+    setResult({ valid: true, ticket: updated, msg: 'AKTIVERT — gyldig 5 min', activated: true });
+    addLog(updated, 'Aktivert');
   };
 
   const addLog = (ticket, status) => {
@@ -138,7 +164,26 @@ export default function DriverPortal() {
             </div>
           ) : (
             <div className="w-full max-w-sm space-y-4 text-center">
-              {result.valid ? (
+              {result.type === 'customer' ? (
+                <div className="space-y-3 text-left">
+                  <div className="bg-blue-950/40 border-2 border-blue-500 rounded-3xl p-6 text-center">
+                    <User className="w-12 h-12 text-blue-400 mx-auto mb-2" />
+                    <h2 className="text-xl font-black text-blue-300">{result.customer?.name || 'Kunde'}</h2>
+                    <p className="text-slate-400 text-sm">{result.customer?.phone || ''}</p>
+                    <p className="text-slate-500 text-xs mt-2">{result.tickets?.length || 0} ubrukte billetter</p>
+                  </div>
+                  {result.tickets?.length === 0 && <p className="text-slate-500 text-sm text-center py-4">Ingen ubrukte billetter</p>}
+                  {result.tickets?.map(t => (
+                    <div key={t.id} className="bg-[#111] border border-slate-800 rounded-xl p-3 flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-white capitalize">{t.type} · {t.ticket_category}</p>
+                        <p className="text-slate-500 text-xs font-mono">{t.short_code}</p>
+                      </div>
+                      <Button size="sm" onClick={() => activateFromCustomer(t)} className="bg-[#c0392b] hover:bg-[#a93226]">Aktiver</Button>
+                    </div>
+                  ))}
+                </div>
+              ) : result.valid ? (
                 <div className="bg-green-950/40 border-2 border-green-500 rounded-3xl p-8">
                   <CheckCircle2 className="w-20 h-20 text-green-400 mx-auto mb-3" />
                   <h2 className="text-5xl font-black text-green-400">BOARD</h2>

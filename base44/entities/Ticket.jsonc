@@ -75,6 +75,10 @@
       "type": "string",
       "title": "Activated At"
     },
+    "last_scanned_at": {
+      "type": "string",
+      "title": "Last Scanned At (freeze)"
+    },
     "used_at": {
       "type": "string",
       "title": "Used At"
