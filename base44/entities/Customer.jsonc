@@ -34,6 +34,27 @@
     "connected_users": {
       "type": "string",
       "title": "Connected Users (JSON)"
+    },
+    "favorite_ticket_type": {
+      "type": "string",
+      "enum": [
+        "adult",
+        "child",
+        "senior",
+        "student",
+        "military"
+      ],
+      "title": "Favorite Ticket Type",
+      "default": "adult"
+    },
+    "favorite_ticket_category": {
+      "type": "string",
+      "enum": [
+        "single",
+        "period"
+      ],
+      "title": "Favorite Ticket Category",
+      "default": "single"
     }
   },
   "required": [

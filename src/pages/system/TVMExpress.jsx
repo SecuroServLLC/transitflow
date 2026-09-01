@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
-const TICKET_TYPE_LABELS = {
+const TYPE_LABELS = {
   adult: 'Voksen',
   child: 'Barn',
   senior: 'Honnør',
@@ -10,231 +10,208 @@ const TICKET_TYPE_LABELS = {
   military: 'Militær'
 };
 
-const CATEGORY_LABELS = {
+const CAT_LABELS = {
   single: 'Enkeltbillett',
   period: 'Periodebillett (30d)'
 };
 
+// Simple express reader — a small onboard device.
+// Scans the passenger's PROFILE QR (CUST:<id>) and auto-activates their
+// favorite ticket. Three screen states:
+//   GREEN  -> ticket activated
+//   RED    -> insufficient balance
+//   YELLOW -> system error
 export default function TVMExpress() {
-  const [cardInput, setCardInput] = useState('');
-  const [log, setLog] = useState([]);
-  const [lastResult, setLastResult] = useState(null);
-  const [processing, setProcessing] = useState(false);
+  const [input, setInput] = useState('');
+  const [state, setState] = useState('idle'); // idle | processing | green | red | yellow
+  const [info, setInfo] = useState(null);
+  const [lastLog, setLastLog] = useState(null);
   const inputRef = useRef(null);
-  const queryClient = useQueryClient();
-
-  // Always focus input
-  useEffect(() => {
-    const focusInput = () => inputRef.current?.focus();
-    focusInput();
-    const interval = setInterval(focusInput, 2000);
-    return () => clearInterval(interval);
-  }, []);
 
   const { data: pricing = [] } = useQuery({
     queryKey: ['pricing'],
     queryFn: () => base44.entities.Pricing.list()
   });
 
-  const handleScan = async (cardNumber) => {
-    if (processing) return;
-    const trimmed = cardNumber.trim();
-    if (!trimmed) return;
+  // Always (re)focus the hidden input so HID scans land here.
+  useEffect(() => {
+    const focus = () => inputRef.current?.focus();
+    focus();
+    const t = setInterval(focus, 2000);
+    return () => clearInterval(t);
+  }, []);
 
-    setProcessing(true);
-    setCardInput('');
+  // Auto-return to idle a few seconds after a result.
+  useEffect(() => {
+    if (state === 'idle' || state === 'processing') return;
+    const t = setTimeout(() => {
+      setState('idle');
+      setInfo(null);
+      setInput('');
+      inputRef.current?.focus();
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [state]);
 
-    const timestamp = new Date().toLocaleTimeString('nb-NO');
-
+  const handleScan = async (raw) => {
+    const val = String(raw).trim();
+    if (!val) return;
+    setState('processing');
+    setInfo(null);
+    setInput('');
+    const stamp = () => new Date().toLocaleTimeString('nb-NO');
+    const note = (status, message) => setLastLog({ time: stamp(), status, message });
     try {
-      // Look up card
-      const cards = await base44.entities.TransitCard.filter({ card_number: trimmed });
-      const card = cards[0];
+      let customerId = val;
+      if (val.startsWith('CUST:')) customerId = val.slice(5);
 
-      if (!card) {
-        const entry = { time: timestamp, card: trimmed, status: 'error', message: 'Kort ikke funnet' };
-        setLog(prev => [entry, ...prev.slice(0, 9)]);
-        setLastResult(entry);
-        setProcessing(false);
+      const list = await base44.entities.Customer.filter({ id: customerId });
+      const customer = list[0];
+      if (!customer) {
+        setState('yellow');
+        setInfo({ message: 'Kunde ikke funnet' });
+        note('yellow', 'Kunde ikke funnet');
         return;
       }
 
-      if (card.status === 'blocked') {
-        const entry = { time: timestamp, card: trimmed, status: 'error', message: 'Kort er sperret' };
-        setLog(prev => [entry, ...prev.slice(0, 9)]);
-        setLastResult(entry);
-        setProcessing(false);
-        return;
-      }
-
-      const ticketType = card.favorite_ticket_type || 'adult';
-      const ticketCategory = card.favorite_ticket_category || 'single';
-
-      // Find price
+      const ticketType = customer.favorite_ticket_type || 'adult';
+      const ticketCategory = customer.favorite_ticket_category || 'single';
       const priceEntry = pricing.find(p => p.ticket_type === ticketType);
-      const creditCost = ticketCategory === 'period'
+      const cost = ticketCategory === 'period'
         ? (priceEntry?.period_credit_cost || 200)
         : (priceEntry?.credit_cost || 90);
 
-      if (card.balance_credits < creditCost) {
-        const entry = {
-          time: timestamp, card: trimmed, status: 'error',
-          message: `Utilstrekkelig saldo. Har ${card.balance_credits} kr, trenger ${creditCost} kr`
-        };
-        setLog(prev => [entry, ...prev.slice(0, 9)]);
-        setLastResult(entry);
-        setProcessing(false);
+      if ((customer.credits || 0) < cost) {
+        setState('red');
+        setInfo({ balance: customer.credits || 0, cost });
+        note('red', `Saldo ${customer.credits || 0} / trenger ${cost}`);
         return;
       }
 
-      // Generate ticket
-      const ticketId = `TC-${Date.now().toString(36).toUpperCase()}`;
+      const now = new Date();
+      const ticketId = `EXP-${now.getTime().toString(36).toUpperCase()}`;
       const qrToken = `QR-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
       const shortCode = Math.floor(100000 + Math.random() * 900000).toString();
-      const now = new Date().toISOString();
+      const validUntil = ticketCategory === 'period'
+        ? new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        : new Date(now.getTime() + 5 * 60 * 1000).toISOString();
 
       await base44.entities.Ticket.create({
         ticket_id: ticketId,
         type: ticketType,
         ticket_category: ticketCategory,
-        credits_paid: creditCost,
+        credits_paid: cost,
         purchase_method: 'machine',
-        status: ticketCategory === 'period' ? 'active' : 'unused',
+        status: 'active',
         qr_token: qrToken,
         short_code: shortCode,
-        purchased_at: now,
-        valid_until: ticketCategory === 'period'
-          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-          : new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-        customer_id: card.customer_id || card.id,
-        customer_name: card.customer_name || 'TransitCard',
+        purchased_at: now.toISOString(),
+        activated_at: now.toISOString(),
+        valid_until: validUntil,
+        customer_id: customer.id,
+        customer_name: customer.name,
         issued_by: 'TVMExpress'
       });
-
-      // Deduct credits
-      await base44.entities.TransitCard.update(card.id, {
-        balance_credits: card.balance_credits - creditCost,
-        last_used_at: now
+      await base44.entities.Customer.update(customer.id, {
+        credits: (customer.credits || 0) - cost
       });
 
-      const entry = {
-        time: timestamp,
-        card: trimmed,
-        status: 'ok',
-        message: `${TICKET_TYPE_LABELS[ticketType]} ${CATEGORY_LABELS[ticketCategory]} — kode: ${shortCode}`,
-        shortCode,
-        ticketType,
-        ticketCategory
-      };
-      setLog(prev => [entry, ...prev.slice(0, 9)]);
-      setLastResult(entry);
-
+      setState('green');
+      setInfo({ ticketType, ticketCategory, validUntil, shortCode, name: customer.name });
+      note('green', `${TYPE_LABELS[ticketType]} ${CAT_LABELS[ticketCategory]}`);
     } catch (err) {
-      const entry = { time: timestamp, card: trimmed, status: 'error', message: 'Systemfeil' };
-      setLog(prev => [entry, ...prev.slice(0, 9)]);
-      setLastResult(entry);
-    }
-
-    setProcessing(false);
-    setTimeout(() => inputRef.current?.focus(), 100);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleScan(cardInput);
+      setState('yellow');
+      setInfo({ message: 'Systemfeil' });
+      note('yellow', 'Systemfeil');
     }
   };
 
-  const resultBg = !lastResult ? 'bg-gray-900' :
-    lastResult.status === 'ok' ? 'bg-green-900' : 'bg-red-900';
+  const onKey = (e) => {
+    if (e.key === 'Enter') handleScan(input);
+  };
+
+  const bg = state === 'green' ? 'bg-green-600'
+    : state === 'red' ? 'bg-red-600'
+    : state === 'yellow' ? 'bg-yellow-400'
+    : state === 'processing' ? 'bg-gray-800'
+    : 'bg-gray-950';
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col" onClick={() => inputRef.current?.focus()}>
-      {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-sm font-mono text-gray-400">LST TVMExpress — Skanner klar</span>
-        </div>
-        <span className="text-xs text-gray-600 font-mono">
-          {new Date().toLocaleDateString('nb-NO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </span>
-      </div>
-
-      {/* Hidden input always ready */}
+    <div className={`min-h-screen ${bg} text-white flex flex-col items-center justify-center transition-colors duration-300 select-none`}>
+      {/* Hidden input capturing HID scans */}
       <input
         ref={inputRef}
-        value={cardInput}
-        onChange={e => setCardInput(e.target.value)}
-        onKeyDown={handleKeyDown}
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        onKeyDown={onKey}
         className="opacity-0 absolute w-0 h-0"
         autoFocus
       />
 
-      {/* Main result area */}
-      <div className={`flex-1 flex flex-col items-center justify-center transition-colors duration-500 ${resultBg} px-8`}>
-        {processing && (
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-xl text-gray-300">Behandler...</p>
-          </div>
-        )}
+      {/* Idle */}
+      {state === 'idle' && (
+        <div className="text-center px-6">
+          <div className="text-7xl mb-6">📡</div>
+          <p className="text-2xl font-light text-gray-300">Skann profil-QR</p>
+          <p className="text-gray-500 mt-2 text-sm">Ekspressleser klar</p>
+          {input && (
+            <p className="mt-6 text-xl font-mono tracking-widest text-yellow-300">{input}</p>
+          )}
+        </div>
+      )}
 
-        {!processing && !lastResult && (
-          <div className="text-center">
-            <div className="text-8xl mb-6">📳</div>
-            <p className="text-3xl font-light text-gray-300">Skann eller tast kortnummer</p>
-            <p className="text-gray-500 mt-3 font-mono">Trykk Enter for å bekrefte</p>
-            {cardInput && (
-              <p className="mt-6 text-2xl font-mono tracking-widest text-yellow-400">{cardInput}</p>
-            )}
-          </div>
-        )}
+      {/* Processing */}
+      {state === 'processing' && (
+        <div className="text-center">
+          <div className="w-14 h-14 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-xl text-gray-300">Behandler…</p>
+        </div>
+      )}
 
-        {!processing && lastResult && (
-          <div className="text-center max-w-md w-full">
-            {lastResult.status === 'ok' ? (
-              <>
-                <div className="text-7xl mb-4">✅</div>
-                <p className="text-4xl font-bold text-green-300 mb-2">Godkjent</p>
-                <p className="text-xl text-white mt-2">{lastResult.message}</p>
-                <div className="mt-6 bg-black/30 rounded-xl p-4 font-mono">
-                  <p className="text-gray-400 text-sm">Billettkode</p>
-                  <p className="text-3xl tracking-widest text-white font-bold">{lastResult.shortCode}</p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-7xl mb-4">❌</div>
-                <p className="text-4xl font-bold text-red-300 mb-2">Avvist</p>
-                <p className="text-xl text-white mt-2">{lastResult.message}</p>
-              </>
-            )}
-            <p className="text-gray-500 text-sm mt-6 font-mono">Skann neste kort for å fortsette</p>
-            {cardInput && (
-              <p className="mt-2 text-xl font-mono tracking-widest text-yellow-400">{cardInput}</p>
-            )}
-          </div>
-        )}
-      </div>
+      {/* GREEN */}
+      {state === 'green' && (
+        <div className="text-center px-6">
+          <div className="text-8xl mb-4">✓</div>
+          <h1 className="text-4xl font-black mb-2">AKTIVERT BILLETT</h1>
+          <p className="text-2xl font-bold">{TYPE_LABELS[info?.ticketType]}</p>
+          <p className="text-lg opacity-90">{CAT_LABELS[info?.ticketCategory]}</p>
+          {info?.ticketCategory === 'single' && (
+            <p className="mt-3 text-base opacity-80">Gyldig til {new Date(info.validUntil).toLocaleTimeString('nb-NO')}</p>
+          )}
+          {info?.ticketCategory === 'period' && (
+            <p className="mt-3 text-base opacity-80">Gyldig til {new Date(info.validUntil).toLocaleDateString('nb-NO')}</p>
+          )}
+          {info?.name && <p className="mt-2 text-sm opacity-70">{info.name}</p>}
+        </div>
+      )}
 
-      {/* Log */}
-      <div className="bg-gray-900 border-t border-gray-800 px-6 py-3 max-h-48 overflow-y-auto">
-        <p className="text-xs text-gray-600 uppercase tracking-widest mb-2 font-mono">Logg</p>
-        {log.length === 0 && (
-          <p className="text-xs text-gray-700 font-mono">Ingen skanninger ennå</p>
-        )}
-        {log.map((entry, i) => (
-          <div key={i} className={`flex items-center gap-3 text-xs font-mono py-1 border-b border-gray-800/50 ${entry.status === 'ok' ? 'text-green-400' : 'text-red-400'}`}>
-            <span className="text-gray-600 w-16 shrink-0">{entry.time}</span>
-            <span className="text-gray-500 w-28 shrink-0 tracking-widest">{entry.card}</span>
-            <span className={entry.status === 'ok' ? 'text-green-400' : 'text-red-400'}>
-              {entry.status === 'ok' ? '✓' : '✗'}
-            </span>
-            <span className="truncate">{entry.message}</span>
-          </div>
-        ))}
-      </div>
+      {/* RED */}
+      {state === 'red' && (
+        <div className="text-center px-6">
+          <div className="text-8xl mb-4">✗</div>
+          <h1 className="text-4xl font-black mb-2">FOR LITE SALDO</h1>
+          <p className="text-xl opacity-90">Saldo: {info?.balance} kr</p>
+          <p className="text-lg opacity-80">Pris: {info?.cost} kr</p>
+          <p className="mt-4 text-sm opacity-70">Topp opp i appen eller automat</p>
+        </div>
+      )}
+
+      {/* YELLOW */}
+      {state === 'yellow' && (
+        <div className="text-center px-6 text-black">
+          <div className="text-8xl mb-4">⚠</div>
+          <h1 className="text-4xl font-black mb-2">FEIL</h1>
+          <p className="text-xl opacity-90">{info?.message || 'Systemfeil'}</p>
+          <p className="mt-4 text-sm opacity-70">Kontakt personalet</p>
+        </div>
+      )}
+
+      {/* Minimal status footer */}
+      {lastLog && (state === 'idle') && (
+        <div className="absolute bottom-3 left-0 right-0 text-center text-[11px] font-mono text-gray-600">
+          Siste: {lastLog.time} — {lastLog.message}
+        </div>
+      )}
     </div>
   );
 }

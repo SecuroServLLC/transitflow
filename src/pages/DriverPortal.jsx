@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -117,6 +117,15 @@ export default function DriverPortal() {
 
   const reset = () => { setCode(''); setResult(null); refetch(); };
   const logout = () => { clearUnifiedSession(); setDriver(null); setStep('login'); setResult(null); setLocalScans([]); };
+
+  // Auto-advance to the next passenger after 5s for final results.
+  // The interactive customer list (with unused tickets) is excluded — the driver must pick.
+  useEffect(() => {
+    if (!result) return;
+    if (result.type === 'customer' && result.tickets?.length > 0) return;
+    const t = setTimeout(() => { setResult(null); setCode(''); }, 5000);
+    return () => clearTimeout(t);
+  }, [result]);
 
   if (step === 'login') {
     return (

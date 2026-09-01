@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -93,6 +93,13 @@ export default function InspectorSite() {
 
   const reset = () => { setCode(''); setResult(null); refetch(); };
   const logout = () => { clearUnifiedSession(); setInspector(null); setStep('username'); setUsername(''); setAccessCode(''); setCode(''); setResult(null); setLocalScans([]); };
+
+  // Auto-advance to the next passenger after 5s for all results.
+  useEffect(() => {
+    if (!result) return;
+    const t = setTimeout(() => { setCode(''); setResult(null); }, 5000);
+    return () => clearTimeout(t);
+  }, [result]);
 
   if (step === 'username') return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">

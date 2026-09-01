@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Switch } from '@/components/ui/switch';
 import { validateLuhn, generateCardNumber, generateCardholderName, generateExpiry, generateCVV, formatCardDisplay } from '@/utils/luhn';
 import { derivePin, safeJSON } from '@/utils/customerAuth';
-import { LogOut, CreditCard, Car, Users, Plus, Trash2, Wand2, Zap, Search } from 'lucide-react';
+import { LogOut, CreditCard, Car, Users, Plus, Trash2, Wand2, Zap, Search, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CustomerProfile({ customer, onRefresh, onLogout }) {
@@ -22,6 +22,8 @@ export default function CustomerProfile({ customer, onRefresh, onLogout }) {
   const [connectedLimit, setConnectedLimit] = useState('');
   const [connectedTicketType, setConnectedTicketType] = useState('any');
   const [lookupCode, setLookupCode] = useState('');
+  const [favType, setFavType] = useState(customer.favorite_ticket_type || 'adult');
+  const [favCat, setFavCat] = useState(customer.favorite_ticket_category || 'single');
   const qc = useQueryClient();
 
   const cards = safeJSON(customer.credit_cards, []);
@@ -91,6 +93,16 @@ export default function CustomerProfile({ customer, onRefresh, onLogout }) {
     });
   };
 
+  const setFavorite = (type, cat) => {
+    const t = type || favType;
+    const c = cat || favCat;
+    setFavType(t);
+    setFavCat(c);
+    upd.mutate({ favorite_ticket_type: t, favorite_ticket_category: c }, {
+      onSuccess: () => toast.success('Favorite ticket updated')
+    });
+  };
+
   // Lookup ticket by short code (from machine)
   const lookupTicket = async () => {
     if (!lookupCode.trim()) return;
@@ -153,6 +165,35 @@ export default function CustomerProfile({ customer, onRefresh, onLogout }) {
             <p className="text-gray-500 text-sm">{customer.phone || 'No phone'}</p>
           </div>
         )}
+      </Section>
+
+      {/* Favorite Ticket (bus express reader) */}
+      <Section title="Favorite Ticket (Bus)" icon={<Star className="w-4 h-4" />}>
+        <div className="p-4 space-y-4">
+          <div>
+            <Label className="text-xs text-gray-500">Ticket Type</Label>
+            <div className="grid grid-cols-5 gap-1 mt-1">
+              {['adult', 'child', 'senior', 'student', 'military'].map(t => (
+                <button key={t} onClick={() => setFavorite(t, null)}
+                  className={`py-2 border-2 rounded-lg text-xs font-medium capitalize transition-all ${favType === t ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500'}`}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs text-gray-500">Category</Label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              {['single', 'period'].map(c => (
+                <button key={c} onClick={() => setFavorite(null, c)}
+                  className={`py-2 border-2 rounded-lg text-xs font-medium transition-all ${favCat === c ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500'}`}>
+                  {c === 'single' ? 'Single' : 'Period (30d)'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-gray-400">Used by the onboard express reader — scan your profile QR to activate automatically.</p>
+        </div>
       </Section>
 
       {/* Credit Cards */}
