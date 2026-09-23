@@ -1,7 +1,10 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import LSTLogo from '@/components/LSTLogo';
 import { base44 } from '@/api/base44Client';
+import { getUnifiedSession, ROLE_ROUTES } from '@/utils/unifiedAuth';
+import { getRemember } from '@/utils/sessionLock';
+import { getCustomerSession } from '@/utils/customerAuth';
 import { Bus, Shield, Store, Users, MapPin, QrCode, Smartphone, Globe, CreditCard, ChevronRight, Star, Zap, Clock, CheckCircle, MessageSquare, AlertTriangle, Siren } from 'lucide-react';
 
 const PORTALS = [
@@ -83,6 +86,20 @@ function ContactForm() {
 }
 
 export default function LandingPage() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const remember = getRemember();
+    const unified = getUnifiedSession();
+    const customer = getCustomerSession();
+    const machine = sessionStorage.getItem('transit_machine_session');
+    let route = null;
+    if (machine) route = '/tvm';
+    else if (customer) route = '/app';
+    else if (unified?.role) route = ROLE_ROUTES[unified.role];
+    else if (remember?.role) route = ROLE_ROUTES[remember.role];
+    if (route) navigate(route, { replace: true });
+  }, [navigate]);
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Nav */}
