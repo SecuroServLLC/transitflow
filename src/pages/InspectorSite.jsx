@@ -16,8 +16,8 @@ export default function InspectorSite() {
     const s = getUnifiedSession();
     return (s && s.role === 'inspector') ? 'active' : 'username';
   });
-  const [username, setUsername] = useState('');
-  const [accessCode, setAccessCode] = useState('');
+  const [badgeId, setBadgeId] = useState('');
+  const [pin, setPin] = useState('');
   const [inspector, setInspector] = useState(() => {
     const s = getUnifiedSession();
     return (s && s.role === 'inspector') ? s.identity : null;
@@ -48,11 +48,11 @@ export default function InspectorSite() {
     onSuccess: () => { toast.success('Digital fine issued!'); setFineForm({ name: '', dob: '', ssn: '', phone: '', email: '', address: '', zip: '', city: '', reason: 'No Valid Ticket', busline: '', tripID: '' }); setPanel('scan'); }
   });
 
-  const loginStep = () => { if (!username.trim()) { toast.error('Enter username'); return; } setStep('code'); };
+  const loginStep = () => { if (!badgeId.trim()) { toast.error('Skriv inn skilt-ID'); return; } setStep('code'); };
   const loginWithCode = () => {
-    const found = inspectors.find(i => i.username?.toLowerCase() === username.trim().toLowerCase() && i.access_code === accessCode.trim() && i.is_active !== false);
-    if (found) { setInspector(found); setStep('active'); toast.success(`Welcome, ${found.name}!`); }
-    else toast.error('Invalid credentials');
+    const found = inspectors.find(i => i.badge_id?.toLowerCase() === badgeId.trim().toLowerCase() && String(i.pin) === pin.trim() && i.is_active !== false);
+    if (found) { setInspector(found); setStep('active'); toast.success(`Velkommen, ${found.name}!`); }
+    else { toast.error('Feil skilt-ID eller PIN'); setPin(''); }
   };
 
   const addLog = (ticket, status) => {
@@ -92,7 +92,7 @@ export default function InspectorSite() {
   };
 
   const reset = () => { setCode(''); setResult(null); refetch(); };
-  const logout = () => { clearUnifiedSession(); setInspector(null); setStep('username'); setUsername(''); setAccessCode(''); setCode(''); setResult(null); setLocalScans([]); };
+  const logout = () => { clearUnifiedSession(); setInspector(null); setStep('username'); setBadgeId(''); setPin(''); setCode(''); setResult(null); setLocalScans([]); };
 
   // Auto-advance to the next passenger after 5s for all results.
   useEffect(() => {
@@ -104,9 +104,9 @@ export default function InspectorSite() {
   if (step === 'username') return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       <div className="bg-[#111] border border-slate-800 rounded-2xl p-8 w-full max-w-sm space-y-6">
-        <div className="text-center"><LSTLogo size={56} className="mx-auto mb-4" /><h1 className="text-xl font-black text-white">Inspector Portal</h1><p className="text-slate-500 text-sm mt-1">Enter your username</p></div>
-        <Input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === 'Enter' && loginStep()} className="bg-[#0a0a0a] border-slate-700 text-white h-12 text-center text-lg" />
-        <Button onClick={loginStep} className="w-full h-12 bg-[#c0392b] hover:bg-[#a93226] font-bold">Next →</Button>
+        <div className="text-center"><LSTLogo size={56} className="mx-auto mb-4" /><h1 className="text-xl font-black text-white">Inspector Portal</h1><p className="text-slate-500 text-sm mt-1">Skriv inn skilt-ID</p></div>
+        <Input placeholder="Skilt-ID (f.eks. INS-001)" value={badgeId} onChange={e => setBadgeId(e.target.value)} onKeyDown={e => e.key === 'Enter' && loginStep()} className="bg-[#0a0a0a] border-slate-700 text-white h-12 text-center text-lg font-mono tracking-widest" />
+        <Button onClick={loginStep} className="w-full h-12 bg-[#c0392b] hover:bg-[#a93226] font-bold">Neste →</Button>
       </div>
     </div>
   );
@@ -114,9 +114,9 @@ export default function InspectorSite() {
   if (step === 'code') return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       <div className="bg-[#111] border border-slate-800 rounded-2xl p-8 w-full max-w-sm space-y-6">
-        <div className="text-center"><div className="text-4xl mb-3">🔐</div><h1 className="text-xl font-black text-white">Access Code</h1><p className="text-slate-400 text-sm">Welcome, <span className="text-[#c0392b] font-bold">{username}</span></p></div>
-        <Input type="password" placeholder="Access Code" value={accessCode} onChange={e => setAccessCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && loginWithCode()} className="bg-[#0a0a0a] border-slate-700 text-white h-14 text-center text-2xl font-mono tracking-widest" />
-        <div className="flex gap-3"><Button variant="outline" onClick={() => setStep('username')} className="flex-1 border-slate-700 text-slate-300">← Back</Button><Button onClick={loginWithCode} className="flex-1 h-12 bg-[#c0392b] hover:bg-[#a93226]">Login</Button></div>
+        <div className="text-center"><div className="text-4xl mb-3">🔐</div><h1 className="text-xl font-black text-white">PIN-kode</h1><p className="text-slate-400 text-sm">Skilt: <span className="text-[#c0392b] font-bold font-mono">{badgeId.toUpperCase()}</span></p></div>
+        <Input type="password" placeholder="PIN" value={pin} onChange={e => setPin(e.target.value)} onKeyDown={e => e.key === 'Enter' && loginWithCode()} className="bg-[#0a0a0a] border-slate-700 text-white h-14 text-center text-2xl font-mono tracking-widest" maxLength={6} />
+        <div className="flex gap-3"><Button variant="outline" onClick={() => { setStep('username'); setPin(''); }} className="flex-1 border-slate-700 text-slate-300">← Tilbake</Button><Button onClick={loginWithCode} className="flex-1 h-12 bg-[#c0392b] hover:bg-[#a93226]">Logg inn</Button></div>
       </div>
     </div>
   );
@@ -126,7 +126,7 @@ export default function InspectorSite() {
       {/* Sidebar */}
       <aside className="w-full md:w-72 bg-[#111] border-b md:border-b-0 md:border-r border-slate-800 flex flex-col">
         <div className="p-4 border-b border-slate-800 flex justify-between items-center">
-          <div className="flex items-center gap-2"><LSTLogo size={28} /><div><p className="font-bold text-sm text-white">{inspector.name}</p><p className="text-slate-500 text-xs">@{inspector.username}</p></div></div>
+          <div className="flex items-center gap-2"><LSTLogo size={28} /><div><p className="font-bold text-sm text-white">{inspector.name}</p><p className="text-slate-500 text-xs font-mono">{inspector.badge_id}</p></div></div>
           <Button variant="ghost" size="sm" onClick={logout} className="text-slate-400 hover:text-red-400"><LogOut className="w-4 h-4" /></Button>
         </div>
         <div className="p-3 flex gap-2">
