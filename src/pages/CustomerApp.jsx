@@ -4,7 +4,9 @@ import MyTickets from '@/components/customer/MyTickets';
 import BuyTicket from '@/components/customer/BuyTicket';
 import CustomerProfile from '@/components/customer/CustomerProfile';
 import PenaltyAlerts from '@/components/customer/PenaltyAlerts';
-import { getCustomerSession, setCustomerSession, clearCustomerSession } from '@/utils/customerAuth';
+import { getCustomerSession, setCustomerSession, clearCustomerSession, validatePin } from '@/utils/customerAuth';
+import { isUnlocked, setUnlocked, clearRemember, clearUnlocked } from '@/utils/sessionLock';
+import QuickUnlock from '@/components/QuickUnlock';
 import { base44 } from '@/api/base44Client';
 import { Ticket, ShoppingBag, User } from 'lucide-react';
 import LSTLogo from '@/components/LSTLogo';
@@ -13,7 +15,7 @@ export default function CustomerApp() {
   const [customer, setCustomer] = useState(getCustomerSession());
   const [tab, setTab] = useState('buy');
 
-  const handleLogin = (c) => { setCustomerSession(c); setCustomer(c); setTab('buy'); };
+  const handleLogin = (c) => { setCustomerSession(c); setCustomer(c); setTab('buy'); setUnlocked(); };
   const handleLogout = () => { clearCustomerSession(); setCustomer(null); };
 
   const refreshCustomer = async (updatedOrObj) => {
@@ -24,6 +26,19 @@ export default function CustomerApp() {
   };
 
   if (!customer) return <UnifiedLogin onPassengerAuth={handleLogin} />;
+  if (!isUnlocked()) {
+    return (
+      <QuickUnlock
+        role="passenger"
+        name={customer.name}
+        onSubmit={async (pinCode) => {
+          if (!validatePin(customer.phone, pinCode)) throw new Error('Feil PIN');
+          setUnlocked();
+        }}
+        onSwitch={() => { clearCustomerSession(); clearRemember(); clearUnlocked(); setCustomer(null); }}
+      />
+    );
+  }
 
   const TABS = [
     { id: 'tickets', label: 'Tickets', icon: Ticket },

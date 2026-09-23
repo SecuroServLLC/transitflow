@@ -7,20 +7,23 @@ import { Label } from '@/components/ui/label';
 import { CheckCircle2, XCircle, LogOut, Search, ShieldAlert, History, Clock } from 'lucide-react';
 import LSTLogo from '@/components/LSTLogo';
 import { toast } from 'sonner';
-import { getUnifiedSession, clearUnifiedSession } from '@/utils/unifiedAuth';
+import { getUnifiedSession, setUnifiedSession, clearUnifiedSession } from '@/utils/unifiedAuth';
+import { isUnlocked, setUnlocked, clearUnlocked } from '@/utils/sessionLock';
+import QuickUnlock from '@/components/QuickUnlock';
 import { ticketState } from '@/utils/ticketActivation';
 import ScanView from '@/components/scanner/ScanView';
 
 export default function InspectorSite() {
   const [step, setStep] = useState(() => {
     const s = getUnifiedSession();
-    return (s && s.role === 'inspector') ? 'active' : 'username';
+    if (s && s.role === 'inspector') return isUnlocked() ? 'active' : 'unlock';
+    return 'username';
   });
   const [badgeId, setBadgeId] = useState('');
   const [pin, setPin] = useState('');
   const [inspector, setInspector] = useState(() => {
     const s = getUnifiedSession();
-    return (s && s.role === 'inspector') ? s.identity : null;
+    return (s && s.role === 'inspector' && isUnlocked()) ? s.identity : null;
   });
   const [code, setCode] = useState('');
   const [result, setResult] = useState(null);
@@ -51,8 +54,23 @@ export default function InspectorSite() {
   const loginStep = () => { if (!badgeId.trim()) { toast.error('Skriv inn skilt-ID'); return; } setStep('code'); };
   const loginWithCode = () => {
     const found = inspectors.find(i => i.badge_id?.toLowerCase() === badgeId.trim().toLowerCase() && String(i.pin) === pin.trim() && i.is_active !== false);
-    if (found) { setInspector(found); setStep('active'); toast.success(`Velkommen, ${found.name}!`); }
-    else { toast.error('Feil skilt-ID eller PIN'); setPin(''); }
+    if (found) {
+      setUnifiedSession({ role: 'inspector', identity: found });
+      setUnlocked();
+      setInspector(found); setStep('active'); toast.success(`Velkommen, ${found.name}!`);
+    } else { toast.error('Feil skilt-ID eller PIN'); setPin(''); }
+  };
+
+  const unlockSubmit = async (pinCode) => {
+    const s = getUnifiedSession();
+    if (!s || s.role !== 'inspector') { setStep('username'); return; }
+    const all = await base44.entities.Inspector.list();
+    const ins = all.find(i => i.badge_id?.toLowerCase() === s.identity.badge_id?.toLowerCase() && String(i.pin) === pinCode.trim() && i.is_active !== false);
+    if (!ins) throw new Error('Feil PIN');
+    setUnifiedSession({ role: 'inspector', identity: ins });
+    setUnlocked();
+    setInspector(ins);
+    setStep('active');
   };
 
   const addLog = (ticket, status) => {
@@ -92,7 +110,7 @@ export default function InspectorSite() {
   };
 
   const reset = () => { setCode(''); setResult(null); refetch(); };
-  const logout = () => { clearUnifiedSession(); setInspector(null); setStep('username'); setBadgeId(''); setPin(''); setCode(''); setResult(null); setLocalScans([]); };
+  const logout = () => { clearUnifiedSession(); clearUnlocked(); setInspector(null); setStep('username'); setBadgeId(''); setPin(''); setCode(''); setResult(null); setLocalScans([]); };
 
   // Auto-advance to the next passenger after 5s for all results.
   useEffect(() => {
@@ -120,6 +138,18 @@ export default function InspectorSite() {
       </div>
     </div>
   );
+
+  if (step === 'unlock') {
+    const s = getUnifiedSession();
+    return (
+      <QuickUnlock
+        role="inspector"
+        name={s?.identity?.name}
+        onSubmit={unlockSubmit}
+        onSwitch={() => { clearUnifiedSession(); clearUnlocked(); setStep('username'); setBadgeId(''); setPin(''); }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col md:flex-row">

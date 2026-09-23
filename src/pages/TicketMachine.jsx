@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { setUnlocked, clearUnlocked } from '@/utils/sessionLock';
 import { base44 } from '@/api/base44Client';
 import { QRCodeSVG } from 'qrcode.react';
 import CashPad from '@/components/machine/CashPad';
@@ -25,6 +26,7 @@ const TYPES = [
 ];
 
 const SESSION_KEY = 'transit_machine_session';
+const REMEMBER_KEY = 'transit_machine_remember';
 
 function getMachineSession() {
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)); } catch { return null; }
@@ -33,7 +35,7 @@ function setMachineSession(data) { sessionStorage.setItem(SESSION_KEY, JSON.stri
 function clearMachineSession() { sessionStorage.removeItem(SESSION_KEY); }
 
 export default function TicketMachine() {
-  const [loginStep, setLoginStep] = useState('admin'); // 'admin' | 'machineId' | 'pin'
+  const [loginStep, setLoginStep] = useState(() => localStorage.getItem(REMEMBER_KEY) ? 'quick' : 'admin'); // 'admin' | 'machineId' | 'pin' | 'quick'
   const [adminForm, setAdminForm] = useState({ username: '', password: '' });
   const [machineIdInput, setMachineIdInput] = useState('');
   const [pinInput, setPinInput] = useState('');
@@ -64,6 +66,40 @@ export default function TicketMachine() {
 
   const cost = priceMap[selectedType]?.[category] || 0;
   const bonusCredits = Math.round(topupAmount * 0.4);
+
+  // Quick resume: fetch the remembered machine for PIN-only unlock.
+  useEffect(() => {
+    if (loginStep !== 'quick') return;
+    const id = localStorage.getItem(REMEMBER_KEY);
+    if (!id) { setLoginStep('admin'); return; }
+    let cancelled = false;
+    (async () => {
+      const all = await base44.entities.MachineAccount.list();
+      if (cancelled) return;
+      const m = all.find(x => x.machine_id === id && x.is_active !== false);
+      if (!m || m.force_locked || m.session_token) {
+        localStorage.removeItem(REMEMBER_KEY);
+        setLoginStep('admin');
+        return;
+      }
+      setPendingMachine(m);
+    })();
+    return () => { cancelled = true; };
+  }, [loginStep]);
+
+  const quickVerify = async () => {
+    if (!pendingMachine) return;
+    const pin = pinInput.replace(/\s/g, '');
+    if (pin !== pendingMachine.access_pin) { toast.error('Incorrect PIN'); return; }
+    const token = genAccessPin();
+    await base44.entities.MachineAccount.update(pendingMachine.id, { session_token: token });
+    const session = { ...pendingMachine, session_token: token };
+    setMachineSession(session);
+    setAccount(session);
+    setUnlocked();
+    localStorage.setItem(REMEMBER_KEY, pendingMachine.machine_id);
+    toast.success(`${pendingMachine.name} activated!`);
+  };
 
   // Step 1: admin/admin check
   const checkAdmin = () => {
@@ -96,6 +132,8 @@ export default function TicketMachine() {
     const session = { ...pendingMachine, session_token: token };
     setMachineSession(session);
     setAccount(session);
+    setUnlocked();
+    localStorage.setItem(REMEMBER_KEY, pendingMachine.machine_id);
     toast.success(`${pendingMachine.name} activated!`);
   };
 
@@ -104,6 +142,8 @@ export default function TicketMachine() {
       await base44.entities.MachineAccount.update(account.id, { session_token: '' });
     }
     clearMachineSession();
+    localStorage.removeItem(REMEMBER_KEY);
+    clearUnlocked();
     setAccount(null);
     setLoginStep('admin');
     setAdminForm({ username: '', password: '' });
@@ -255,6 +295,15 @@ export default function TicketMachine() {
               />
               <Button onClick={checkPin} className="w-full h-12 bg-green-600 hover:bg-green-700">Activate Machine ✓</Button>
               <Button variant="ghost" onClick={() => { setLoginStep('machineId'); setPendingMachine(null); setPinInput(''); }} className="w-full text-gray-400">← Back</Button>
+            </div>
+          )}
+
+          {loginStep === 'quick' && (
+            <div className="space-y-3">
+              <p className="text-gray-500 text-sm text-center">Quick resume — <strong>{pendingMachine?.name}</strong> ({pendingMachine?.machine_id})</p>
+              <Input placeholder="12-digit PIN" value={pinInput} onChange={e => setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && quickVerify()} className="h-14 text-xl font-mono tracking-wider text-center" maxLength={12} />
+              <Button onClick={quickVerify} className="w-full h-12 bg-green-600 hover:bg-green-700">Activate Machine ✓</Button>
+              <Button variant="ghost" onClick={() => { localStorage.removeItem(REMEMBER_KEY); setLoginStep('admin'); setPendingMachine(null); setPinInput(''); }} className="w-full text-gray-400">← Use another machine</Button>
             </div>
           )}
         </div>

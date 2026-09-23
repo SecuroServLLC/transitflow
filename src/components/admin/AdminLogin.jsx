@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { setRemember, setUnlocked } from '@/utils/sessionLock';
 
 export default function AdminLogin({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -11,6 +12,8 @@ export default function AdminLogin({ onLogin }) {
   const handleLogin = () => {
     if (username === 'admin' && password === 'admin') {
       sessionStorage.setItem('admin_auth', 'true');
+      setRemember({ role: 'admin', identifier: 'admin', name: 'Admin' });
+      setUnlocked();
       onLogin();
     } else {
       setError('Invalid credentials. Use admin / admin');

@@ -19,6 +19,8 @@ import FeesManager from '@/components/admin/FeesManager';
 import TransactionLog from '@/components/admin/TransactionLog';
 import FinesManager from '@/components/admin/FinesManager';
 import LSTLogo from '@/components/LSTLogo';
+import QuickUnlock from '@/components/QuickUnlock';
+import { getRemember, clearRemember, isUnlocked, setUnlocked, clearUnlocked } from '@/utils/sessionLock';
 import {
   LayoutDashboard, Users, Shield, Tag, QrCode, LogOut,
   Briefcase, MonitorSmartphone, RotateCcw, Store, Handshake,
@@ -68,13 +70,27 @@ const SECTIONS = {
 };
 
 export default function AdminSite() {
-  const [loggedIn, setLoggedIn] = useState(sessionStorage.getItem('admin_auth') === 'true');
+  const [loggedIn, setLoggedIn] = useState(() => getRemember()?.role === 'admin' && isUnlocked());
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  if (!loggedIn && getRemember()?.role === 'admin') {
+    return (
+      <QuickUnlock
+        role="admin"
+        name="Admin"
+        onSubmit={async (pw) => {
+          if (pw !== 'admin') throw new Error('Feil passord');
+          setUnlocked();
+          setLoggedIn(true);
+        }}
+        onSwitch={() => { clearRemember(); setLoggedIn(false); }}
+      />
+    );
+  }
   if (!loggedIn) return <AdminLogin onLogin={() => setLoggedIn(true)} />;
 
-  const logout = () => { sessionStorage.removeItem('admin_auth'); setLoggedIn(false); };
+  const logout = () => { sessionStorage.removeItem('admin_auth'); clearUnlocked(); setLoggedIn(false); };
   const Section = SECTIONS[activeTab] || AdminDashboard;
 
   return (

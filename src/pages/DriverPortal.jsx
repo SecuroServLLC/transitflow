@@ -6,20 +6,23 @@ import { Input } from '@/components/ui/input';
 import { CheckCircle2, XCircle, LogOut, Search, Bus, Clock, AlertTriangle, User } from 'lucide-react';
 import LSTLogo from '@/components/LSTLogo';
 import { toast } from 'sonner';
-import { getUnifiedSession, clearUnifiedSession } from '@/utils/unifiedAuth';
+import { getUnifiedSession, setUnifiedSession, clearUnifiedSession } from '@/utils/unifiedAuth';
+import { isUnlocked, setUnlocked, clearUnlocked } from '@/utils/sessionLock';
+import QuickUnlock from '@/components/QuickUnlock';
 import { ticketState, activateTicket, isFrozen, frozenRemaining, markScanned } from '@/utils/ticketActivation';
 import ScanView from '@/components/scanner/ScanView';
 
 export default function DriverPortal() {
   const [step, setStep] = useState(() => {
     const s = getUnifiedSession();
-    return (s && s.role === 'driver') ? 'validate' : 'login';
+    if (s && s.role === 'driver') return isUnlocked() ? 'validate' : 'unlock';
+    return 'login';
   });
   const [username, setUsername] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [driver, setDriver] = useState(() => {
     const s = getUnifiedSession();
-    return (s && s.role === 'driver') ? s.identity : null;
+    return (s && s.role === 'driver' && isUnlocked()) ? s.identity : null;
   });
   const [code, setCode] = useState('');
   const [result, setResult] = useState(null);
@@ -49,8 +52,23 @@ export default function DriverPortal() {
       d.access_code === accessCode.trim() &&
       d.is_active !== false
     );
-    if (found) { setDriver(found); setStep('validate'); toast.success(`Welcome, ${found.name}!`); }
-    else toast.error('Invalid credentials');
+    if (found) {
+      setUnifiedSession({ role: 'driver', identity: found });
+      setUnlocked();
+      setDriver(found); setStep('validate'); toast.success(`Welcome, ${found.name}!`);
+    } else toast.error('Invalid credentials');
+  };
+
+  const unlockSubmit = async (code) => {
+    const s = getUnifiedSession();
+    if (!s || s.role !== 'driver') { setStep('login'); return; }
+    const all = await base44.entities.BusDriver.list();
+    const d = all.find(x => x.username?.toLowerCase() === s.identity.username?.toLowerCase() && x.access_code === code.trim() && x.is_active !== false);
+    if (!d) throw new Error('Feil tilgangskode');
+    setUnifiedSession({ role: 'driver', identity: d });
+    setUnlocked();
+    setDriver(d);
+    setStep('validate');
   };
 
   const handleScan = async (qr) => {
@@ -116,7 +134,7 @@ export default function DriverPortal() {
   };
 
   const reset = () => { setCode(''); setResult(null); refetch(); };
-  const logout = () => { clearUnifiedSession(); setDriver(null); setStep('login'); setResult(null); setLocalScans([]); };
+  const logout = () => { clearUnifiedSession(); clearUnlocked(); setDriver(null); setStep('login'); setResult(null); setLocalScans([]); };
 
   // Auto-advance to the next passenger after 5s for final results.
   // The interactive customer list (with unused tickets) is excluded — the driver must pick.
@@ -143,6 +161,18 @@ export default function DriverPortal() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (step === 'unlock') {
+    const s = getUnifiedSession();
+    return (
+      <QuickUnlock
+        role="driver"
+        name={s?.identity?.name}
+        onSubmit={unlockSubmit}
+        onSwitch={() => { clearUnifiedSession(); clearUnlocked(); setStep('login'); setUsername(''); setAccessCode(''); }}
+      />
     );
   }
 

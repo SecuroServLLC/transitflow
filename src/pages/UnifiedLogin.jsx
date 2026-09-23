@@ -4,8 +4,10 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import LSTLogo from '@/components/LSTLogo';
-import { detectRole, ROLE_META, ROLE_ROUTES, setUnifiedSession } from '@/utils/unifiedAuth';
+import { detectRole, ROLE_META, ROLE_ROUTES, getUnifiedSession, setUnifiedSession } from '@/utils/unifiedAuth';
 import { setCustomerSession, validatePin } from '@/utils/customerAuth';
+import { getRemember, setRemember, clearRemember, isUnlocked, setUnlocked } from '@/utils/sessionLock';
+import QuickUnlock from '@/components/QuickUnlock';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight, Loader2, ChevronRight } from 'lucide-react';
 
@@ -83,7 +85,7 @@ async function authPassenger(id, password) {
 
 export default function UnifiedLogin({ onPassengerAuth }) {
   const [identifier, setIdentifier] = useState('');
-  const [step, setStep] = useState('id');
+  const [step, setStep] = useState(() => (getRemember() && !isUnlocked()) ? 'quick' : 'id');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -91,6 +93,18 @@ export default function UnifiedLogin({ onPassengerAuth }) {
 
   const { role, id } = detectRole(identifier);
   const meta = ROLE_META[role] || ROLE_META.passenger;
+
+  const remember = getRemember();
+  const AUTH = { driver: authDriver, inspector: authInspector, tvm: authTvm, admin: authAdmin, passenger: authPassenger };
+  const quickSubmit = async (secret) => {
+    const r = getRemember();
+    if (!r) { setStep('id'); return; }
+    const res = await AUTH[r.role](r.identifier, secret);
+    setUnlocked();
+    setRemember({ ...r, name: res?.customer?.name || r.name });
+    if (r.role === 'passenger' && onPassengerAuth && res.customer) onPassengerAuth(res.customer);
+    else navigate(res.route, { replace: true });
+  };
 
   const next = () => {
     if (!identifier.trim()) { toast.error('Skriv inn brukernavn eller telefon'); return; }
@@ -113,6 +127,9 @@ export default function UnifiedLogin({ onPassengerAuth }) {
         case 'admin':     result = await authAdmin(id, password); break;
         default:          result = await authPassenger(id, password);
       }
+      setUnlocked();
+      const sess = getUnifiedSession();
+      setRemember({ role: role || 'passenger', identifier: id, name: sess?.identity?.name || result.customer?.name || id });
       if (role === 'passenger' && onPassengerAuth && result.customer) {
         onPassengerAuth(result.customer);
       } else {
@@ -143,7 +160,16 @@ export default function UnifiedLogin({ onPassengerAuth }) {
             </div>
           )}
 
-          {step === 'id' ? (
+          {step === 'quick' && (
+            <QuickUnlock
+              role={remember?.role}
+              name={remember?.name}
+              onSubmit={quickSubmit}
+              onSwitch={() => { clearRemember(); setStep('id'); setIdentifier(''); }}
+            />
+          )}
+
+          {step === 'id' && (
             <>
               <div>
                 <label className="text-xs text-slate-400 block mb-1.5">Brukernavn / Telefon</label>
@@ -167,7 +193,9 @@ export default function UnifiedLogin({ onPassengerAuth }) {
                 <p><span className="font-mono text-slate-500">telefon/e-post</span> — passasjer</p>
               </div>
             </>
-          ) : (
+          )}
+
+          {step === 'pass' && (
             <>
               <div className="text-center">
                 <div className="text-3xl mb-1">{meta.icon}</div>
