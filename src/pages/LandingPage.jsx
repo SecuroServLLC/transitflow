@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import LSTLogo from '@/components/LSTLogo';
 import { base44 } from '@/api/base44Client';
-import { Bus, Shield, Store, Users, MapPin, QrCode, Smartphone, Globe, CreditCard, ChevronRight, Star, Zap, Clock, CheckCircle, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Bus, Shield, Store, Users, MapPin, QrCode, Smartphone, Globe, CreditCard, ChevronRight, Star, Zap, Clock, CheckCircle, MessageSquare, AlertTriangle, Siren } from 'lucide-react';
 
 const PORTALS = [
   { path: '/app', icon: Smartphone, label: 'Passenger App', desc: 'Buy tickets, top up credits, manage your account', color: 'from-red-900 to-red-700' },
   { path: '/web', icon: Globe, label: 'Web Portal', desc: 'Full-featured browser ticketing experience', color: 'from-slate-800 to-slate-700' },
   { path: '/pos', icon: CreditCard, label: 'POS — Cashier', desc: 'Cashier terminal for ticket sales and top-ups', color: 'from-slate-800 to-slate-700' },
   { path: '/tvm', icon: QrCode, label: 'TVM — Ticket Machine', desc: 'Self-service vending machine interface', color: 'from-slate-800 to-slate-700' },
-  { path: '/inspect', icon: Shield, label: 'Inspector Portal', desc: 'Validate tickets, issue penalty fares', color: 'from-slate-800 to-slate-700' },
+  { path: '/inspect', icon: Siren, label: 'Inspector Terminal', desc: 'Standalone app — scan & validate tickets, issue penalty fares', color: 'from-blue-900 to-blue-700' },
   { path: '/retail', icon: Store, label: 'Retail Partner', desc: 'Retailer POS — sell tickets at your store', color: 'from-slate-800 to-slate-700' },
   { path: '/partner', icon: Users, label: 'Partner Portal', desc: 'Business partner dashboard and reporting', color: 'from-slate-800 to-slate-700' },
   { path: '/driver', icon: Bus, label: 'Driver Portal', desc: 'Bus driver scan & operations terminal', color: 'from-slate-800 to-slate-700' },

@@ -122,7 +122,7 @@ export default function InspectorSite() {
   if (step === 'username') return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       <div className="bg-[#111] border border-slate-800 rounded-2xl p-8 w-full max-w-sm space-y-6">
-        <div className="text-center"><LSTLogo size={56} className="mx-auto mb-4" /><h1 className="text-xl font-black text-white">Inspector Portal</h1><p className="text-slate-500 text-sm mt-1">Skriv inn skilt-ID</p></div>
+        <div className="text-center"><LSTLogo size={56} className="mx-auto mb-4" /><h1 className="text-xl font-black text-white">Inspector Terminal</h1><p className="text-slate-500 text-sm mt-1">Skriv inn skilt-ID</p></div>
         <Input placeholder="Skilt-ID (f.eks. INS-001)" value={badgeId} onChange={e => setBadgeId(e.target.value)} onKeyDown={e => e.key === 'Enter' && loginStep()} className="bg-[#0a0a0a] border-slate-700 text-white h-12 text-center text-lg font-mono tracking-widest" />
         <Button onClick={loginStep} className="w-full h-12 bg-[#c0392b] hover:bg-[#a93226] font-bold">Neste →</Button>
       </div>
