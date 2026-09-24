@@ -89,6 +89,8 @@ export default function UnifiedLogin({ onPassengerAuth }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [twofa, setTwofa] = useState('');
+  const [pending, setPending] = useState(null);
   const navigate = useNavigate();
 
   const { role, id } = detectRole(identifier);
@@ -114,6 +116,19 @@ export default function UnifiedLogin({ onPassengerAuth }) {
 
   const back = () => { setStep('id'); setPassword(''); setError(''); };
 
+  const needs2FA = (r) => r === 'driver' || r === 'inspector' || r === 'admin';
+
+  const finalize = (result) => {
+    setUnlocked();
+    const sess = getUnifiedSession();
+    setRemember({ role: role || 'passenger', identifier: id, name: sess?.identity?.name || result?.customer?.name || id });
+    if (role === 'passenger' && onPassengerAuth && result?.customer) {
+      onPassengerAuth(result.customer);
+    } else {
+      navigate(result.route, { replace: true });
+    }
+  };
+
   const submit = async () => {
     if (!password.trim()) { toast.error('Skriv inn passord'); return; }
     setError('');
@@ -127,19 +142,23 @@ export default function UnifiedLogin({ onPassengerAuth }) {
         case 'admin':     result = await authAdmin(id, password); break;
         default:          result = await authPassenger(id, password);
       }
-      setUnlocked();
-      const sess = getUnifiedSession();
-      setRemember({ role: role || 'passenger', identifier: id, name: sess?.identity?.name || result.customer?.name || id });
-      if (role === 'passenger' && onPassengerAuth && result.customer) {
-        onPassengerAuth(result.customer);
+      if (needs2FA(role)) {
+        setPending(result);
+        setStep('twofa');
       } else {
-        navigate(result.route, { replace: true });
+        finalize(result);
       }
     } catch (e) {
       setError(e.message || 'Innlogging feilet');
     } finally {
       setLoading(false);
     }
+  };
+
+  const submit2fa = () => {
+    // Placeholder 2FA: godtar hva som helst inntil ekte 2FA er på plass.
+    if (!twofa.trim()) { toast.error('Skriv inn 2FA-kode'); return; }
+    finalize(pending);
   };
 
   return (
@@ -178,20 +197,23 @@ export default function UnifiedLogin({ onPassengerAuth }) {
                   value={identifier}
                   onChange={e => setIdentifier(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && next()}
-                  placeholder="DRVR- · INSP- · TVM- · ADM · telefon"
+                  placeholder={import.meta.env.DEV ? "DRVR- · INSP- · TVM- · ADM · telefon" : "Brukernavn eller telefon"}
                   className="bg-[#0a0a0a] border-slate-700 text-white h-12 text-center font-mono tracking-wide"
                 />
               </div>
               <Button onClick={next} className="w-full h-12 bg-[#c0392b] hover:bg-[#a93226] font-bold">
                 Neste <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
-              <div className="text-[11px] text-slate-600 space-y-0.5 pt-1">
-                <p><span className="font-mono text-slate-500">DRVR-brukernavn</span> — sjåfør</p>
-                <p><span className="font-mono text-slate-500">INSP-skiltID</span> — inspektør</p>
-                <p><span className="font-mono text-slate-500">TVM-maskinID</span> — billettautomat</p>
-                <p><span className="font-mono text-slate-500">ADM</span> — administrator</p>
-                <p><span className="font-mono text-slate-500">telefon/e-post</span> — passasjer</p>
-              </div>
+              {import.meta.env.DEV && (
+                <div className="text-[11px] text-slate-600 space-y-0.5 pt-2 mt-2 border-t border-slate-800">
+                  <p className="text-amber-500 font-bold text-[10px] uppercase tracking-wider mb-1">⚠ Kun synlig i utvikling (skjult i produksjon)</p>
+                  <p><span className="font-mono text-slate-500">DRVR-brukernavn</span> — sjåfør</p>
+                  <p><span className="font-mono text-slate-500">INSP-skiltID</span> — inspektør</p>
+                  <p><span className="font-mono text-slate-500">TVM-maskinID</span> — billettautomat</p>
+                  <p><span className="font-mono text-slate-500">ADM</span> — administrator</p>
+                  <p><span className="font-mono text-slate-500">telefon/e-post</span> — passasjer</p>
+                </div>
+              )}
             </>
           )}
 
@@ -221,6 +243,36 @@ export default function UnifiedLogin({ onPassengerAuth }) {
                 </Button>
                 <Button onClick={submit} disabled={loading} className="flex-1 h-12 bg-[#c0392b] hover:bg-[#a93226] font-bold">
                   {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Logger inn...</> : 'Logg inn'}
+                </Button>
+              </div>
+            </>
+          )}
+
+          {step === 'twofa' && (
+            <>
+              <div className="text-center">
+                <div className="text-3xl mb-1">🔐</div>
+                <p className="text-slate-400 text-xs">To-faktor (2FA)</p>
+                <p className="text-slate-500 text-[11px] mt-1">Midlertidig: godta hva som helst</p>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 block mb-1.5">2FA-kode</label>
+                <Input
+                  autoFocus
+                  value={twofa}
+                  onChange={e => setTwofa(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && submit2fa()}
+                  placeholder="6-sifret kode"
+                  className="bg-[#0a0a0a] border-slate-700 text-white h-12 text-center font-mono tracking-widest"
+                />
+              </div>
+              {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => { setStep('pass'); setTwofa(''); }} className="border-slate-700 text-slate-300 hover:bg-slate-800">
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+                <Button onClick={submit2fa} className="flex-1 h-12 bg-[#c0392b] hover:bg-[#a93226] font-bold">
+                  Bekreft
                 </Button>
               </div>
             </>

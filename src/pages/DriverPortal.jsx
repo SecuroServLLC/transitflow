@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, XCircle, LogOut, Search, Bus, Clock, AlertTriangle, User } from 'lucide-react';
+import { CheckCircle2, XCircle, LogOut, Search, Bus, Clock, AlertTriangle, User, Loader2, ArrowLeft } from 'lucide-react';
 import LSTLogo from '@/components/LSTLogo';
 import { toast } from 'sonner';
 import { getUnifiedSession, setUnifiedSession, clearUnifiedSession } from '@/utils/unifiedAuth';
@@ -27,9 +27,11 @@ export default function DriverPortal() {
   const [code, setCode] = useState('');
   const [result, setResult] = useState(null);
   const [localScans, setLocalScans] = useState([]);
+  const [twofa, setTwofa] = useState('');
+  const [pendingDriver, setPendingDriver] = useState(null);
   const qc = useQueryClient();
 
-  const { data: drivers = [] } = useQuery({
+  const { data: drivers = [], isLoading: driversLoading } = useQuery({
     queryKey: ['bus-drivers'],
     queryFn: () => base44.entities.BusDriver.list(),
     enabled: step === 'login'
@@ -47,16 +49,26 @@ export default function DriverPortal() {
   });
 
   const login = () => {
+    if (driversLoading) return;
     const found = drivers.find(d =>
       d.username?.toLowerCase() === username.trim().toLowerCase() &&
       d.access_code === accessCode.trim() &&
       d.is_active !== false
     );
-    if (found) {
-      setUnifiedSession({ role: 'driver', identity: found });
-      setUnlocked();
-      setDriver(found); setStep('validate'); toast.success(`Welcome, ${found.name}!`);
-    } else toast.error('Invalid credentials');
+    if (!found) { toast.error('Ugyldig brukernavn eller tilgangskode'); return; }
+    setPendingDriver(found);
+    setStep('twofa');
+  };
+
+  const completeLogin = () => {
+    if (!pendingDriver) return;
+    setUnifiedSession({ role: 'driver', identity: pendingDriver });
+    setUnlocked();
+    setDriver(pendingDriver);
+    setStep('validate');
+    toast.success(`Velkommen, ${pendingDriver.name}`);
+    setTwofa('');
+    setPendingDriver(null);
   };
 
   const unlockSubmit = async (code) => {
@@ -157,7 +169,37 @@ export default function DriverPortal() {
           <div className="space-y-3">
             <Input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} className="bg-[#0a0a0a] border-slate-700 text-white h-12" />
             <Input type="password" placeholder="Access Code" value={accessCode} onChange={e => setAccessCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && login()} className="bg-[#0a0a0a] border-slate-700 text-white h-12 font-mono tracking-widest" />
-            <Button onClick={login} className="w-full h-12 bg-[#c0392b] hover:bg-[#a93226] font-bold">Login</Button>
+            <Button onClick={login} disabled={driversLoading} className="w-full h-12 bg-[#c0392b] hover:bg-[#a93226] font-bold">
+              {driversLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Laster...</> : 'Login'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'twofa') {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+        <div className="bg-[#111] border border-slate-800 rounded-2xl p-8 w-full max-w-sm space-y-6">
+          <div className="text-center">
+            <div className="text-3xl mb-1">🔐</div>
+            <h1 className="text-xl font-black text-white">To-faktor (2FA)</h1>
+            <p className="text-slate-500 text-sm mt-1">Midlertidig: godta hva som helst</p>
+          </div>
+          <Input
+            autoFocus
+            value={twofa}
+            onChange={e => setTwofa(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && completeLogin()}
+            placeholder="6-sifret kode"
+            className="bg-[#0a0a0a] border-slate-700 text-white h-12 text-center font-mono tracking-widest"
+          />
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { setStep('login'); setTwofa(''); setPendingDriver(null); }} className="border-slate-700 text-slate-300 hover:bg-slate-800">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <Button onClick={completeLogin} className="flex-1 h-12 bg-[#c0392b] hover:bg-[#a93226] font-bold">Bekreft</Button>
           </div>
         </div>
       </div>
