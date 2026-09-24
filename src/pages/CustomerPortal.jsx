@@ -3,12 +3,13 @@ import UnifiedLogin from '@/pages/UnifiedLogin';
 import MyTickets from '@/components/customer/MyTickets';
 import BuyTicket from '@/components/customer/BuyTicket';
 import CustomerProfile from '@/components/customer/CustomerProfile';
+import TransitCardPanel from '@/components/customer/TransitCardPanel';
 import PenaltyAlerts from '@/components/customer/PenaltyAlerts';
 import { getCustomerSession, setCustomerSession, clearCustomerSession, validatePin } from '@/utils/customerAuth';
 import { isUnlocked, setUnlocked, clearRemember, clearUnlocked } from '@/utils/sessionLock';
 import QuickUnlock from '@/components/QuickUnlock';
 import { base44 } from '@/api/base44Client';
-import { Ticket, ShoppingBag, User } from 'lucide-react';
+import { Ticket, ShoppingBag, User, CreditCard } from 'lucide-react';
 import LSTLogo from '@/components/LSTLogo';
 
 // Detects mobile by user-agent (primary) and window width (fallback for resize/desktop narrow).
@@ -69,6 +70,7 @@ export default function CustomerPortal() {
       <PenaltyAlerts customer={customer} onRefresh={refreshCustomer} />
       {tab === 'tickets' && <MyTickets customer={customer} />}
       {tab === 'buy' && <BuyTicket customer={customer} onRefresh={refreshCustomer} />}
+      {tab === 'card' && <TransitCardPanel customer={customer} onRefresh={refreshCustomer} />}
       {tab === 'profile' && <CustomerProfile customer={customer} onRefresh={refreshCustomer} onLogout={handleLogout} />}
     </>
   );
@@ -135,6 +137,10 @@ export default function CustomerPortal() {
                   <Icon className="w-4 h-4" />{label}
                 </button>
               ))}
+              <button onClick={() => setTab('card')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'card' ? 'bg-[#c0392b] text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
+                <CreditCard className="w-4 h-4" />Transit-kort
+              </button>
             </nav>
             <p className="text-slate-400 text-xs hidden lg:block">{customer.name}</p>
           </div>
