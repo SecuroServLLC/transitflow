@@ -38,7 +38,7 @@ export const ROLE_META = {
   inspector:  { label: 'Inspektør',         icon: '🛡️', color: '#f59e0b', idHint: 'INSP-skilt-ID',      passLabel: 'PIN',               passPlaceholder: 'PIN-kode' },
   tvm:        { label: 'Billettautomat',    icon: '🎫', color: '#10b981', idHint: 'TVM-maskin-ID',      passLabel: 'Tilgangs-PIN',      passPlaceholder: '12-sifret PIN' },
   admin:      { label: 'Administrator',     icon: '⚙️', color: '#c0392b', idHint: 'ADM',                 passLabel: 'Passord',           passPlaceholder: 'Passord' },
-  passenger:  { label: 'Passasjer',         icon: '📱', color: '#8b5cf6', idHint: 'Telefon eller e-post', passLabel: 'Passord',          passPlaceholder: 'Passord' },
+  passenger:  { label: 'Passasjer',         icon: '📱', color: '#8b5cf6', idHint: 'Telefon eller e-post', passLabel: 'Kode',              passPlaceholder: '4-sifret kode' },
 };
 
 export const ROLE_ROUTES = {

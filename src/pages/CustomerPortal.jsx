@@ -56,7 +56,7 @@ export default function CustomerPortal() {
         role="passenger"
         name={customer.name}
         onSubmit={async (pinCode) => {
-          if (!validatePin(customer.phone, pinCode)) throw new Error('Feil PIN');
+          if (!validatePin(customer, pinCode)) throw new Error('Feil PIN');
           setUnlocked();
         }}
         onSwitch={() => { clearCustomerSession(); clearRemember(); clearUnlocked(); setCustomer(null); }}

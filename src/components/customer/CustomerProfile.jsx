@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { validateLuhn, generateCardNumber, generateCardholderName, generateExpiry, generateCVV, formatCardDisplay } from '@/utils/luhn';
-import { derivePin, safeJSON } from '@/utils/customerAuth';
+import { derivePin, safeJSON, effectivePin } from '@/utils/customerAuth';
 import { LogOut, CreditCard, Car, Users, Plus, Trash2, Wand2, Zap, Search, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,6 +22,8 @@ export default function CustomerProfile({ customer, onRefresh, onLogout }) {
   const [connectedLimit, setConnectedLimit] = useState('');
   const [connectedTicketType, setConnectedTicketType] = useState('any');
   const [lookupCode, setLookupCode] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   const [favType, setFavType] = useState(customer.favorite_ticket_type || 'adult');
   const [favCat, setFavCat] = useState(customer.favorite_ticket_category || 'single');
   const qc = useQueryClient();
@@ -29,7 +31,7 @@ export default function CustomerProfile({ customer, onRefresh, onLogout }) {
   const cards = safeJSON(customer.credit_cards, []);
   const vehicles = safeJSON(customer.vehicles, []);
   const connected = safeJSON(customer.connected_users, []);
-  const pin = derivePin(customer.phone || '');
+  const pin = effectivePin(customer);
 
   const upd = useMutation({
     mutationFn: data => base44.entities.Customer.update(customer.id, data),
@@ -117,6 +119,12 @@ export default function CustomerProfile({ customer, onRefresh, onLogout }) {
     setLookupCode('');
   };
 
+  const savePin = () => {
+    if (!/^\d{4}$/.test(newPin)) { toast.error('Koden må være 4 siffer'); return; }
+    if (newPin !== confirmPin) { toast.error('Kodene stemmer ikke overens'); return; }
+    upd.mutate({ pin: newPin }, { onSuccess: () => { toast.success('Kode endret'); setModal(null); setNewPin(''); setConfirmPin(''); } });
+  };
+
   return (
     <div className="p-4 space-y-4 pb-8">
       <div className="flex justify-between items-center">
@@ -133,7 +141,12 @@ export default function CustomerProfile({ customer, onRefresh, onLogout }) {
             <p className="text-blue-200 text-sm">Credit Balance</p>
             <p className="text-5xl font-black mt-1">{customer.credits || 0}</p>
             <p className="text-blue-200 text-sm">credits</p>
-            {pin && <p className="text-blue-300 text-xs mt-3">Login PIN: <span className="font-mono font-bold text-white">{pin}</span></p>}
+            {pin && (
+              <div className="mt-3 flex items-center gap-2">
+                <p className="text-blue-300 text-xs">Logg inn-kode: <span className="font-mono font-bold text-white">{pin}</span></p>
+                <button onClick={() => { setNewPin(''); setConfirmPin(''); setModal('pin'); }} className="text-blue-200 text-xs underline hover:text-white">Endre</button>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-2 items-end">
             <Button onClick={() => setModal('topup')} size="sm" className="bg-white/20 hover:bg-white/30 text-white border-0">
@@ -366,6 +379,22 @@ export default function CustomerProfile({ customer, onRefresh, onLogout }) {
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setModal(null)} className="flex-1">Cancel</Button>
               <Button onClick={lookupTicket} className="flex-1 bg-blue-600 hover:bg-blue-700"><Search className="w-4 h-4 mr-2" />Import</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change login PIN */}
+      <Dialog open={modal === 'pin'} onOpenChange={() => setModal(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Endre logg inn-kode</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-gray-500 text-sm">Standardkoden er 2 første + 2 siste sifre av telefonnummeret. Sett en egen 4-sifret kode.</p>
+            <div><Label>Ny kode (4 siffer)</Label><Input value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))} className="font-mono tracking-widest text-center text-lg" maxLength={4} placeholder="0000" /></div>
+            <div><Label>Bekreft kode</Label><Input value={confirmPin} onChange={e => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4))} className="font-mono tracking-widest text-center text-lg" maxLength={4} placeholder="0000" /></div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setModal(null)} className="flex-1">Avbryt</Button>
+              <Button onClick={savePin} className="flex-1 bg-blue-600 hover:bg-blue-700">Lagre</Button>
             </div>
           </div>
         </DialogContent>

@@ -10,6 +10,7 @@ export function setCustomerSession(customer) {
     name: customer.name,
     email: customer.email || '',
     phone: customer.phone || '',
+    pin: customer.pin || '',
     credits: customer.credits || 0,
     credit_cards: customer.credit_cards || '',
     connected_users: customer.connected_users || '',
@@ -21,14 +22,31 @@ export function clearCustomerSession() {
   localStorage.removeItem(SESSION_KEY);
 }
 
+// Default login code: first 2 + last 2 digits of the phone number.
 export function derivePin(phone) {
   const d = String(phone || '').replace(/\D/g, '');
   if (d.length < 4) return '';
   return d.slice(0, 2) + d.slice(-2);
 }
 
-export function validatePin(phone, pin) {
-  return !!pin && derivePin(phone) === String(pin).trim();
+// Effective login code: a stored PIN takes precedence over the phone-derived one.
+export function effectivePin(customer) {
+  const stored = String(customer?.pin || '').trim();
+  if (stored.length >= 4) return stored;
+  return derivePin(customer?.phone || '');
+}
+
+// Validates a login code. `source` may be a customer record (uses stored pin,
+// then derived) or a plain phone string (derived only).
+export function validatePin(source, pin) {
+  const p = String(pin || '').trim();
+  if (!p) return false;
+  if (source && typeof source === 'object') {
+    const stored = String(source.pin || '').trim();
+    if (stored.length >= 4) return stored === p;
+    return derivePin(source.phone) === p;
+  }
+  return derivePin(source) === p;
 }
 
 export function safeJSON(val, fallback = []) {

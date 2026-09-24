@@ -74,7 +74,7 @@ async function authPassenger(id, password) {
     : await base44.entities.Customer.filter({ phone: id.trim() });
   const c = isEmail
     ? list.find(x => x.password === password)
-    : list.find(x => validatePin(x.phone, password));
+    : list.find(x => validatePin(x, password));
   if (!c) throw new Error('Feil telefon/e-post eller passord');
   const full = await base44.entities.Customer.filter({ id: c.id });
   const record = full[0] || c;
@@ -91,6 +91,7 @@ export default function UnifiedLogin({ onPassengerAuth }) {
   const [error, setError] = useState('');
   const [twofa, setTwofa] = useState('');
   const [pending, setPending] = useState(null);
+  const [resetting, setResetting] = useState(false);
   const navigate = useNavigate();
 
   const { role, id } = detectRole(identifier);
@@ -159,6 +160,22 @@ export default function UnifiedLogin({ onPassengerAuth }) {
     // Placeholder 2FA: godtar hva som helst inntil ekte 2FA er på plass.
     if (!twofa.trim()) { toast.error('Skriv inn 2FA-kode'); return; }
     finalize(pending);
+  };
+
+  const doReset = async () => {
+    const idv = identifier.trim();
+    if (!idv) { toast.error('Skriv inn telefon eller e-post'); return; }
+    setResetting(true);
+    try {
+      const isEmail = idv.includes('@');
+      const list = isEmail
+        ? await base44.entities.Customer.filter({ email: idv.toLowerCase() })
+        : await base44.entities.Customer.filter({ phone: idv });
+      if (!list.length) { toast.error('Ingen kunde funnet'); return; }
+      await base44.entities.Customer.update(list[0].id, { pin: '0000', password: '0000' });
+      toast.success('Kode tilbakestilt til 0000 — logg inn og endre i profilen');
+      setStep('id'); setPassword('');
+    } finally { setResetting(false); }
   };
 
   return (
@@ -236,6 +253,9 @@ export default function UnifiedLogin({ onPassengerAuth }) {
                   className="bg-[#0a0a0a] border-slate-700 text-white h-12 text-center font-mono tracking-widest"
                 />
               </div>
+              {role === 'passenger' && (
+                <p className="text-slate-500 text-[11px] text-center -mt-1">Telefon: 2 første + 2 siste sifre</p>
+              )}
               {error && <p className="text-red-400 text-sm text-center">{error}</p>}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={back} className="border-slate-700 text-slate-300 hover:bg-slate-800">
@@ -245,6 +265,11 @@ export default function UnifiedLogin({ onPassengerAuth }) {
                   {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Logger inn...</> : 'Logg inn'}
                 </Button>
               </div>
+              {role === 'passenger' && (
+                <button onClick={() => setStep('reset')} className="w-full text-center text-xs text-slate-400 hover:text-white">
+                  Glemt kode?
+                </button>
+              )}
             </>
           )}
 
@@ -273,6 +298,26 @@ export default function UnifiedLogin({ onPassengerAuth }) {
                 </Button>
                 <Button onClick={submit2fa} className="flex-1 h-12 bg-[#c0392b] hover:bg-[#a93226] font-bold">
                   Bekreft
+                </Button>
+              </div>
+            </>
+          )}
+
+          {step === 'reset' && (
+            <>
+              <div className="text-center">
+                <div className="text-3xl mb-1">🔑</div>
+                <p className="text-slate-400 text-xs">Tilbakestill kode</p>
+                <p className="text-slate-500 text-[11px] mt-1">Koden settes til <span className="font-mono font-bold text-white">0000</span></p>
+              </div>
+              <p className="text-slate-300 text-sm text-center break-all">Tilbakestiller for: <span className="font-mono">{identifier}</span></p>
+              <p className="text-slate-500 text-[11px] text-center">Bekreft over, eller gå tilbake for å endre.</p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setStep('pass')} className="border-slate-700 text-slate-300 hover:bg-slate-800">
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+                <Button onClick={doReset} disabled={resetting} className="flex-1 h-12 bg-[#c0392b] hover:bg-[#a93226] font-bold">
+                  {resetting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Tilbakestiller…</> : 'Tilbakestill til 0000'}
                 </Button>
               </div>
             </>
