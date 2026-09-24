@@ -9,8 +9,7 @@ import ScrollToTop from './components/ScrollToTop';
 
 // Pages
 import LandingPage from './pages/LandingPage.jsx';
-import CustomerApp from './pages/CustomerApp';
-import CustomerWeb from './pages/CustomerWeb';
+import CustomerPortal from './pages/CustomerPortal';
 import CashierSite from './pages/CashierSite';
 import TicketMachine from './pages/TicketMachine';
 import InspectorSite from './pages/InspectorSite';
@@ -52,8 +51,8 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       {/* Passenger */}
-      <Route path="/app" element={<CustomerApp />} />
-      <Route path="/web" element={<CustomerWeb />} />
+      <Route path="/app" element={<CustomerPortal />} />
+      <Route path="/web" element={<CustomerPortal />} />
       {/* Staff terminals — legacy short URLs still work */}
       <Route path="/pos" element={<CashierSite />} />
       <Route path="/cashier" element={<CashierSite />} />
