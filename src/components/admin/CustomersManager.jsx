@@ -52,7 +52,8 @@ export default function CustomersManager() {
     mutationFn: async () => {
       const amt = Number(creditAmt);
       if (!amt || amt <= 0) throw new Error('Enter a valid amount');
-      const current = selected.credits || 0;
+      const fresh = await base44.entities.Customer.filter({ id: selected.id });
+      const current = fresh.length ? (fresh[0].credits || 0) : (selected.credits || 0);
       const newBalance = creditMode === 'add' ? current + amt : Math.max(0, current - amt);
       const updated = await base44.entities.Customer.update(selected.id, { credits: newBalance });
       await base44.entities.Transaction.create({

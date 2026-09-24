@@ -38,6 +38,24 @@ export default function CustomerProfile({ customer, onRefresh, onLogout }) {
     onSuccess: (updated) => onRefresh(updated)
   });
 
+  const topUpMutation = useMutation({
+    mutationFn: async () => {
+      const base = 500;
+      const bonus = Math.round(base * 0.25);
+      const total = base + bonus;
+      const newBalance = (customer.credits || 0) + total;
+      await base44.entities.Customer.update(customer.id, { credits: newBalance });
+      await base44.entities.Transaction.create({
+        customer_id: customer.id, customer_name: customer.name, type: 'topup',
+        amount: total, kr_amount: base,
+        description: `Manuell oppfylling ${base} kr (+${bonus} bonus)`, performed_by: 'web'
+      });
+      return total;
+    },
+    onSuccess: (total) => { onRefresh(); toast.success(`${total} credits lagt til!`); setModal(null); },
+    onError: e => toast.error(e.message)
+  });
+
   const saveProfile = () => {
     if (!form.name.trim()) { toast.error('Name required'); return; }
     upd.mutate({ name: form.name, email: form.email, phone: form.phone }, {
@@ -88,11 +106,8 @@ export default function CustomerProfile({ customer, onRefresh, onLogout }) {
   const removeConnectedUser = i => upd.mutate({ connected_users: JSON.stringify(connected.filter((_, j) => j !== i)) });
 
   const doTopUp = () => {
-    if (cards.length === 0) { toast.error('Add a card first'); return; }
-    const bonus = Math.round(500 * 0.25);
-    upd.mutate({ credits: (customer.credits || 0) + 500 + bonus }, {
-      onSuccess: () => { toast.success(`625 credits added!`); setModal(null); }
-    });
+    if (cards.length === 0) { toast.error('Legg til et betalingskort først'); return; }
+    topUpMutation.mutate();
   };
 
   const setFavorite = (type, cat) => {
