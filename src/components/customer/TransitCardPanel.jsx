@@ -129,9 +129,11 @@ export default function TransitCardPanel({ customer, onRefresh }) {
             <span className="text-gray-400 text-sm">på konto</span>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="bg-[#c0392b] hover:bg-[#a93226]">
-              <Plus className="w-4 h-4 mr-1" /> Generer nytt kort
-            </Button>
+            {import.meta.env.DEV && (
+              <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="bg-[#c0392b] hover:bg-[#a93226]">
+                <Plus className="w-4 h-4 mr-1" /> Generer nytt kort
+              </Button>
+            )}
           </div>
         </div>
 
@@ -154,7 +156,7 @@ export default function TransitCardPanel({ customer, onRefresh }) {
           <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-200">
             <CreditCard className="w-10 h-10 mx-auto mb-3 text-gray-300" />
             <p className="font-medium text-gray-500">Ingen transit-kort enda</p>
-            <p className="text-sm mt-1">Generer et nytt kort eller legg til et som finnes fra før</p>
+            <p className="text-sm mt-1">Legg til et kort som finnes fra før</p>
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 gap-4">
