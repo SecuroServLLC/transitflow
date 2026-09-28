@@ -164,8 +164,16 @@ export default function TravelCardPanel({ mode, actorName = 'staff', onTicketAct
             <p className="font-bold text-white text-sm">Fysisk reisekort</p>
             <p className="text-xs text-slate-400">{nfc.supported ? (nfc.active ? 'Lytt etter NFC-tag… hold kortet mot leseren' : 'Trykk Start for å lytte') : 'NFC ikke støttet — skriv inn kortnummer'}</p>
           </div>
-          {nfc.supported && !nfc.active && <Button size="sm" onClick={() => nfc.startScan(id => setCardNo(id))}>Start</Button>}
+          {nfc.supported && !nfc.active && (
+            <Button size="sm" onClick={() => nfc.startScan(id => setCardNo(id))}>Start skann</Button>
+          )}
         </div>
+        {nfc.active && (
+          <div className="flex items-center gap-2 bg-green-950/40 border border-green-700 rounded-lg px-3 py-2">
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-xs text-green-400 font-bold">Skanner kontinuerlig — hold kortet mot leseren</span>
+          </div>
+        )}
         {nfc.error && <p className="text-xs text-red-400">{nfc.error}</p>}
         {!cardNo && (
           <div className="flex gap-2">
@@ -219,6 +227,10 @@ export default function TravelCardPanel({ mode, actorName = 'staff', onTicketAct
               <Button variant="ghost" size="sm" onClick={clearCard} className="text-slate-400 h-7">Bytt kort</Button>
             </div>
           </div>
+
+          {nfc.active && (mode === 'driver' || mode === 'inspect') && (
+            <p className="text-xs text-center text-green-400/80 -mt-1">Klar for neste kort — hold det mot leseren</p>
+          )}
 
           {/* All tickets on the card */}
           <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 space-y-2">
