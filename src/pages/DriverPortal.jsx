@@ -12,6 +12,7 @@ import QuickUnlock from '@/components/QuickUnlock';
 import { ticketState, activateTicket, isFrozen, frozenRemaining, markScanned } from '@/utils/ticketActivation';
 import ScanView from '@/components/scanner/ScanView';
 import TravelCardPanel from '@/components/travelcard/TravelCardPanel';
+import DriverSale from '@/components/driver/DriverSale';
 
 export default function DriverPortal() {
   const [step, setStep] = useState(() => {
@@ -28,7 +29,7 @@ export default function DriverPortal() {
   const [code, setCode] = useState('');
   const [result, setResult] = useState(null);
   const [localScans, setLocalScans] = useState([]);
-  const [scanMode, setScanMode] = useState('qr');
+  const [scanMode, setScanMode] = useState('app');
   const [twofa, setTwofa] = useState('');
   const [pendingDriver, setPendingDriver] = useState(null);
   const qc = useQueryClient();
@@ -241,10 +242,13 @@ export default function DriverPortal() {
           {!result ? (
             <div className="w-full max-w-md space-y-5 text-center">
               <div className="flex gap-2 justify-center">
-                <button onClick={() => setScanMode('qr')} className={`px-4 py-2 rounded-lg text-xs font-bold ${scanMode === 'qr' ? 'bg-[#c0392b] text-white' : 'bg-slate-800 text-slate-400'}`}>QR / App</button>
-                <button onClick={() => setScanMode('card')} className={`px-4 py-2 rounded-lg text-xs font-bold ${scanMode === 'card' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>💳 Reisekort</button>
+                <button onClick={() => { setScanMode('sale'); setResult(null); }} className={`px-5 py-2.5 rounded-lg text-sm font-black ${scanMode === 'sale' ? 'bg-[#c0392b] text-white' : 'bg-slate-800 text-slate-400'}`}>🧾 SALG</button>
+                <button onClick={() => { setScanMode('app'); setResult(null); }} className={`px-5 py-2.5 rounded-lg text-sm font-black ${scanMode === 'app' ? 'bg-[#c0392b] text-white' : 'bg-slate-800 text-slate-400'}`}>📱 APP</button>
+                <button onClick={() => { setScanMode('card'); setResult(null); }} className={`px-5 py-2.5 rounded-lg text-sm font-black ${scanMode === 'card' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>💳 KORT</button>
               </div>
-              {scanMode === 'card' ? (
+              {scanMode === 'sale' ? (
+                <DriverSale driver={driver} />
+              ) : scanMode === 'card' ? (
                 <TravelCardPanel mode="driver" actorName={driver.name} />
               ) : (
                 <>
