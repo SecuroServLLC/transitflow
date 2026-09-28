@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { QRCodeSVG } from 'qrcode.react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { genShortCode } from '@/utils/customerAuth';
 import { toast } from 'sonner';
 import { Printer, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { printTicket58 } from '@/components/driver/PrintableTicket58';
 
 const TYPES = [
   { type: 'adult', label: 'Voksen', icon: '🧑' },
@@ -34,11 +33,13 @@ export default function DriverSale({ driver }) {
     mutationFn: async () => {
       if (!price) throw new Error('Pris ikke satt for denne billettypen');
       const ticketId = `TT-${Math.random().toString(36).substring(2, 7).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      const validUntil = category === 'period' ? new Date(Date.now() + 30 * 86400000).toISOString() : null;
+      const validUntil = category === 'period'
+        ? new Date(Date.now() + 30 * 86400000).toISOString()
+        : new Date(Date.now() + 90 * 60000).toISOString();
       const ticket = await base44.entities.Ticket.create({
         ticket_id: ticketId, type, ticket_category: category,
         credits_paid: price, kr_paid: price, fees_paid: 0,
-        purchase_method: 'cashier', status: category === 'period' ? 'active' : 'unused',
+        purchase_method: 'cashier', status: 'active',
         qr_token: crypto.randomUUID(), short_code: genShortCode(),
         purchased_at: new Date().toISOString(), valid_until: validUntil,
         issued_by: driver?.name || 'Sjåfør',
@@ -54,57 +55,10 @@ export default function DriverSale({ driver }) {
     onSuccess: (ticket) => {
       setLast(ticket);
       qc.invalidateQueries({ queryKey: ['all-tickets'] });
-      printTicket(ticket);
+      printTicket58(ticket);
     },
     onError: e => toast.error(e.message)
   });
-
-  const printTicket = (ticket) => {
-    const qr = renderToStaticMarkup(<QRCodeSVG value={ticket.qr_token} size={120} level="M" includeMargin={false} />);
-    const dt = new Date(ticket.purchased_at);
-    const dateStr = dt.toLocaleString('nb-NO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const validStr = ticket.ticket_category === 'period'
-      ? new Date(ticket.valid_until).toLocaleDateString('nb-NO')
-      : 'Aktiveres ved ombording';
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Billett ${ticket.short_code}</title>
-<style>
-@page { size: 58mm auto; margin: 0; }
-* { box-sizing: border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica, sans-serif; color:#000; background:#fff; font-weight:700; }
-.t { text-align:center; }
-.logo { font-weight:900; font-size:26px; letter-spacing:3px; }
-.sub { font-size:14px; font-weight:900; letter-spacing:2px; }
-.hr { border-top:2px solid #000; margin:1.5mm 0; }
-.type { font-size:17px; font-weight:900; text-transform:uppercase; }
-.price { font-size:30px; font-weight:900; margin:1mm 0; }
-.qr { text-align:center; margin:1mm 0; }
-.code { font-size:30px; font-weight:900; letter-spacing:5px; }
-.row { display:flex; justify-content:space-between; font-size:13px; font-weight:700; margin:0.5mm 0; }
-.foot { font-size:12px; font-weight:700; text-align:center; margin-top:1.5mm; line-height:1.4; }
-.tid { font-size:10px; font-weight:700; text-align:center; margin-top:1mm; }
-</style></head><body>
-<div class="t logo">LST</div>
-<div class="t sub">REISEBILLETT</div>
-<div class="hr"></div>
-<div class="t type">${typeLabel(ticket.type)} · ${catLabel(ticket.ticket_category)}</div>
-<div class="t price">${ticket.kr_paid} kr</div>
-<div class="qr">${qr}</div>
-<div class="t code">${ticket.short_code}</div>
-<div class="hr"></div>
-<div class="row"><span>Kjøpt</span><span>${dateStr}</span></div>
-<div class="row"><span>Gyldig</span><span>${validStr}</span></div>
-<div class="row"><span>Selger</span><span>${ticket.issued_by || ''}</span></div>
-<div class="hr"></div>
-<div class="foot">Gyldig 5 min etter<br>aktivering. Vis QR.</div>
-<div class="tid">${ticket.ticket_id}</div>
-<script>window.onload=function(){setTimeout(function(){window.print();},250);};</script>
-</body></html>`;
-    const w = window.open('', '_blank', 'width=400,height=640');
-    if (!w) { toast.error('Tillat pop-up-vindu for utskrift'); return; }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-  };
 
   if (last) {
     return (
@@ -120,7 +74,7 @@ body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica
           <Button variant="outline" onClick={() => setLast(null)} className="flex-1 h-12 border-slate-700 text-slate-300">
             <ArrowLeft className="w-4 h-4 mr-1" /> Ny salg
           </Button>
-          <Button onClick={() => printTicket(last)} className="flex-1 h-12 bg-[#c0392b] hover:bg-[#a93226]">
+          <Button onClick={() => printTicket58(last)} className="flex-1 h-12 bg-[#c0392b] hover:bg-[#a93226]">
             <Printer className="w-4 h-4 mr-1" /> Skriv ut
           </Button>
         </div>
