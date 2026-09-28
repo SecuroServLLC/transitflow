@@ -20,6 +20,15 @@ export function printTicket58(ticket) {
   const qr = renderToStaticMarkup(<QRCodeSVG value={ticket.qr_token} size={140} level="M" includeMargin={false} />);
   const fromStr = fmt(ticket.purchased_at);
   const toStr = fmt(ticket.valid_until);
+  const isDiscount = ticket.type && ticket.type !== 'adult';
+  const notice = isDiscount
+    ? `<div class="hr"></div>
+<div class="notice">
+  <div class="notice-h">RABATT — KREVER BEVIS</div>
+  <div class="notice-b">Gyldig ID / bevis på rabatt<br>må vises ved kontroll.</div>
+  <div class="notice-f">Mangler bevis:<br>gebyr 1150 kr.</div>
+</div>`
+    : '';
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Billett ${ticket.short_code}</title>
 <style>
 @page { size: 58mm auto; margin: 0; }
@@ -39,6 +48,10 @@ body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica
 .row { display:flex; justify-content:space-between; font-size:13px; font-weight:800; margin:0.6mm 0; }
 .fromto { border:2px solid #000; border-radius:2mm; padding:1mm 1.5mm; margin:1.5mm 0; }
 .fromto .row { font-size:14px; }
+.notice { border:3px solid #000; border-radius:2mm; padding:1.5mm; margin:1.5mm 0; text-align:center; }
+.notice-h { font-size:14px; font-weight:900; letter-spacing:1px; margin-bottom:0.8mm; }
+.notice-b { font-size:12px; font-weight:800; line-height:1.4; }
+.notice-f { font-size:13px; font-weight:900; margin-top:0.8mm; line-height:1.3; }
 .foot { font-size:12px; font-weight:800; text-align:center; margin-top:1.5mm; line-height:1.4; }
 .tid { font-size:10px; font-weight:700; text-align:center; margin-top:1mm; }
 </style></head><body>
@@ -61,6 +74,7 @@ body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica
   <div class="row"><span>Gyldig til</span><span>${toStr}</span></div>
 </div>
 <div class="row"><span>Selger</span><span>${ticket.issued_by || 'Sjåfør'}</span></div>
+${notice}
 <div class="hr"></div>
 <div class="foot">Vis QR-koden ved kontroll.<br>Billetten er personlig.</div>
 <div class="tid">${ticket.ticket_id}</div>
