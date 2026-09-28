@@ -11,6 +11,7 @@ import { isUnlocked, setUnlocked, clearUnlocked } from '@/utils/sessionLock';
 import QuickUnlock from '@/components/QuickUnlock';
 import { ticketState, activateTicket, isFrozen, frozenRemaining, markScanned } from '@/utils/ticketActivation';
 import ScanView from '@/components/scanner/ScanView';
+import TravelCardPanel from '@/components/travelcard/TravelCardPanel';
 
 export default function DriverPortal() {
   const [step, setStep] = useState(() => {
@@ -27,6 +28,7 @@ export default function DriverPortal() {
   const [code, setCode] = useState('');
   const [result, setResult] = useState(null);
   const [localScans, setLocalScans] = useState([]);
+  const [scanMode, setScanMode] = useState('qr');
   const [twofa, setTwofa] = useState('');
   const [pendingDriver, setPendingDriver] = useState(null);
   const qc = useQueryClient();
@@ -237,11 +239,21 @@ export default function DriverPortal() {
         {/* Scan Panel */}
         <main className="flex-1 flex flex-col items-center justify-center p-6">
           {!result ? (
-            <div className="w-full max-w-sm space-y-5 text-center">
-              <Bus className="w-16 h-16 text-[#c0392b] mx-auto" />
-              <h2 className="text-2xl font-black">Aktiver billett</h2>
-              <p className="text-slate-500 text-sm">Skann passasjerens QR-kode for å aktivere (gyldig 5 min)</p>
-              <ScanView onScan={handleScan} placeholder="QR-token eller kode" />
+            <div className="w-full max-w-md space-y-5 text-center">
+              <div className="flex gap-2 justify-center">
+                <button onClick={() => setScanMode('qr')} className={`px-4 py-2 rounded-lg text-xs font-bold ${scanMode === 'qr' ? 'bg-[#c0392b] text-white' : 'bg-slate-800 text-slate-400'}`}>QR / App</button>
+                <button onClick={() => setScanMode('card')} className={`px-4 py-2 rounded-lg text-xs font-bold ${scanMode === 'card' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>💳 Reisekort</button>
+              </div>
+              {scanMode === 'card' ? (
+                <TravelCardPanel mode="driver" actorName={driver.name} />
+              ) : (
+                <>
+                  <Bus className="w-16 h-16 text-[#c0392b] mx-auto" />
+                  <h2 className="text-2xl font-black">Aktiver billett</h2>
+                  <p className="text-slate-500 text-sm">Skann passasjerens QR-kode for å aktivere (gyldig 5 min)</p>
+                  <ScanView onScan={handleScan} placeholder="QR-token eller kode" />
+                </>
+              )}
             </div>
           ) : (
             <div className="w-full max-w-sm space-y-4 text-center">

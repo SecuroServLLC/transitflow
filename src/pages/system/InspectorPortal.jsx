@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CheckCircle2, XCircle, LogOut, Search, ShieldAlert, Clock } from 'lucide-react';
 import LSTLogo from '@/components/LSTLogo';
+import TravelCardPanel from '@/components/travelcard/TravelCardPanel';
 import { toast } from 'sonner';
 
 export default function InspectorPortal() {
@@ -226,6 +227,10 @@ export default function InspectorPortal() {
             onClick={() => setPanel('fine')}
             className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${panel === 'fine' ? 'bg-red-700 text-white' : 'bg-slate-800 text-slate-400'}`}
           >⚠️ Fine</button>
+          <button
+            onClick={() => { setPanel('card'); setResult(null); }}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${panel === 'card' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+          >💳 Reisekort</button>
         </div>
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           <p className="text-[10px] text-slate-600 font-bold tracking-wider uppercase flex items-center gap-1">
@@ -250,7 +255,9 @@ export default function InspectorPortal() {
       </aside>
 
       <main className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
-        {panel === 'scan' ? (
+        {panel === 'card' ? (
+          <TravelCardPanel mode="inspect" actorName={inspector.name} />
+        ) : panel === 'scan' ? (
           <div className="w-full max-w-md space-y-6">
             {!result ? (
               <div className="text-center space-y-5">

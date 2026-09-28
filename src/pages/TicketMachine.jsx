@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {   ArrowLeft, RotateCcw, Wand2, Lock, Settings, Banknote, CreditCard, BarChart2, X } from 'lucide-react';
+import TravelCardPanel from '@/components/travelcard/TravelCardPanel';
 
 const TYPES = [
   { type: 'adult', label: 'Adult', icon: '🧑' },
@@ -364,6 +365,7 @@ export default function TicketMachine() {
               {[
                 { id: 'buy', icon: '🎫', label: 'Buy Ticket', desc: 'Single or period ticket' },
                 { id: 'topup', icon: '⚡', label: 'Top Up Credits', desc: 'Add travel credits' },
+                { id: 'travelcard', icon: '💳', label: 'Reisekort', desc: 'Fysisk NFC-kort' },
               ].map(({ id, icon, label, desc }) => (
                 <button key={id} onClick={() => setScreen(id)}
                   className="bg-slate-800 hover:bg-blue-600 border-2 border-slate-700 hover:border-blue-500 rounded-3xl p-10 flex flex-col items-center gap-4 transition-all">
@@ -487,6 +489,16 @@ export default function TicketMachine() {
                 <p className="text-green-600 text-sm">+40% bonus</p>
               </div>
               <CashPad targetAmount={topupAmount} onComplete={() => doTopUp.mutate()} onCancel={reset} />
+            </div>
+          )}
+
+          {screen === 'travelcard' && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-3">
+                <button onClick={reset} className="text-slate-400 hover:text-white"><ArrowLeft className="w-6 h-6" /></button>
+                <h2 className="text-2xl font-bold">Reisekort (NFC)</h2>
+              </div>
+              <TravelCardPanel mode="tvm" actorName={account?.machine_id || 'tvm'} />
             </div>
           )}
 
