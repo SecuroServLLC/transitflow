@@ -41,7 +41,8 @@ export default function DriverSale({ driver }) {
         credits_paid: price, kr_paid: price, fees_paid: 0,
         purchase_method: 'cashier', status: 'active',
         qr_token: crypto.randomUUID(), short_code: genShortCode(),
-        purchased_at: new Date().toISOString(), valid_until: validUntil,
+        purchased_at: new Date().toISOString(), activated_at: new Date().toISOString(),
+        valid_until: validUntil,
         issued_by: driver?.name || 'Sjåfør',
         customer_name: 'Salg i buss'
       });
