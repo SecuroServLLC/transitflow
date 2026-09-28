@@ -27,11 +27,8 @@ export default function TravelCardPanel({ mode, actorName = 'staff', onTicketAct
 
   const canSell = mode === 'driver' || mode === 'tvm';
 
-  // Auto-start NFC listener if the device supports it.
-  useEffect(() => {
-    if (nfc.supported) nfc.startScan(id => setCardNo(id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nfc.supported]);
+  // NFC listener is started on demand via the "Start skann" button so the
+  // browser's native scan prompt only appears when the user wants to scan.
 
   const { data: card, isFetching: lookupFetching } = useQuery({
     queryKey: ['travelcard-by-no', cardNo],
