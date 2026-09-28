@@ -8,6 +8,16 @@ const LOGO_URL = 'https://media.base44.com/images/public/6a1cc945ce9fabc4f8162a8
 const TYPE_LABEL = { adult: 'Voksen', child: 'Barn', senior: 'Honnør', student: 'Student', military: 'Forsvar' };
 const CAT_LABEL = { single: 'Enkelt', period: '30-dager' };
 
+const COMPANY_FOOTER = `
+<div class="hr"></div>
+<div class="co">
+  <div class="co-n">LST · TestTransit AS</div>
+  <div class="co-l">123 456 789 MVA</div>
+  <div class="co-l">Foretaksregisteret</div>
+  <div class="co-l">Kundeservice +47 987 65 000</div>
+  <div class="co-l">post@bussen.local</div>
+</div>`;
+
 const fmt = (iso) => {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -15,22 +25,12 @@ const fmt = (iso) => {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${String(d.getFullYear()).slice(-2)} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
-export function printTicket58(ticket) {
-  if (!ticket) return;
-  const qr = renderToStaticMarkup(<QRCodeSVG value={ticket.qr_token} size={140} level="M" includeMargin={false} />);
-  const fromStr = fmt(ticket.purchased_at);
-  const toStr = fmt(ticket.valid_until);
-  const isDiscount = ticket.type && ticket.type !== 'adult';
-  const notice = isDiscount
-    ? `<div class="hr"></div>
-<div class="notice">
-  <div class="notice-h">RABATT — KREVER BEVIS</div>
-  <div class="notice-b">Gyldig ID / bevis på rabatt<br>må vises ved kontroll.</div>
-  <div class="notice-f">Mangler bevis:<br>gebyr 1150 kr.</div>
-</div>`
-    : '';
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Billett ${ticket.short_code}</title>
-<style>
+// MVA 25% inkludert i pris: mva = pris * 0,2
+const mvaOf = (kr) => Math.round(kr * 0.2 * 100) / 100;
+const money = (n) => `${String(n).replace('.', ',')} kr`;
+
+function baseStyles() {
+  return `
 @page { size: 58mm auto; margin: 0; }
 * { box-sizing: border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica, sans-serif; color:#000; background:#fff; font-weight:700; }
@@ -48,24 +48,68 @@ body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica
 .row { display:flex; justify-content:space-between; font-size:13px; font-weight:800; margin:0.6mm 0; }
 .fromto { border:2px solid #000; border-radius:2mm; padding:1mm 1.5mm; margin:1.5mm 0; }
 .fromto .row { font-size:14px; }
+.mva { font-size:12px; font-weight:800; text-align:right; margin:0.5mm 0; }
 .notice { border:3px solid #000; border-radius:2mm; padding:1.5mm; margin:1.5mm 0; text-align:center; }
 .notice-h { font-size:14px; font-weight:900; letter-spacing:1px; margin-bottom:0.8mm; }
 .notice-b { font-size:12px; font-weight:800; line-height:1.4; }
 .notice-f { font-size:13px; font-weight:900; margin-top:0.8mm; line-height:1.3; }
+.co { text-align:center; }
+.co-n { font-size:12px; font-weight:900; }
+.co-l { font-size:11px; font-weight:700; line-height:1.4; }
 .foot { font-size:12px; font-weight:800; text-align:center; margin-top:1.5mm; line-height:1.4; }
 .tid { font-size:10px; font-weight:700; text-align:center; margin-top:1mm; }
-</style></head><body>
-<div class="t">
+.tk { border:2px solid #000; border-radius:2mm; padding:1.5mm; margin:1.5mm 0; }
+.tk .tk-type { font-size:14px; font-weight:900; text-transform:uppercase; }
+.tk .tk-row { display:flex; justify-content:space-between; font-size:12px; font-weight:800; }
+.tk .tk-code { font-size:18px; font-weight:900; letter-spacing:3px; text-align:center; margin-top:0.5mm; }
+.tk .tk-qr { text-align:center; margin:0.5mm 0; }
+.total { border:3px solid #000; border-radius:2mm; padding:1mm 1.5mm; margin:1.5mm 0; }
+.total .row { font-size:15px; font-weight:900; }`;
+}
+
+function logoBlock() {
+  return `<div class="t">
   <div class="lockup">
     <img class="logo-img" src="${LOGO_URL}" alt="LST" />
     <div class="logo-txt">LST</div>
     <div class="logo-sub">KOLLEKTIVTRAFIKK</div>
   </div>
-</div>
+</div>`;
+}
+
+function discountNotice(ticket) {
+  const isDiscount = ticket.type && ticket.type !== 'adult';
+  return isDiscount
+    ? `<div class="notice">
+  <div class="notice-h">RABATT — KREVER BEVIS</div>
+  <div class="notice-b">Gyldig ID / bevis på rabatt<br>må vises ved kontroll.</div>
+  <div class="notice-f">Mangler bevis:<br>gebyr 1150 kr.</div>
+</div>`
+    : '';
+}
+
+function openPrintWindow(html) {
+  const w = window.open('', '_blank', 'width=420,height=720');
+  if (!w) { toast.error('Tillat pop-up-vindu for utskrift'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+// Én billett per lapp.
+export function printTicket58(ticket) {
+  if (!ticket) return;
+  const qr = renderToStaticMarkup(<QRCodeSVG value={ticket.qr_token} size={140} level="M" includeMargin={false} />);
+  const fromStr = fmt(ticket.purchased_at);
+  const toStr = fmt(ticket.valid_until);
+  const mva = mvaOf(ticket.kr_paid);
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Billett ${ticket.short_code}</title>
+<style>${baseStyles()}</style></head><body>
+${logoBlock()}
 <div class="t title" style="margin-top:1.5mm;">REISEBILLETT</div>
 <div class="hr"></div>
 <div class="t type">${TYPE_LABEL[ticket.type] || ticket.type} · ${CAT_LABEL[ticket.ticket_category] || ticket.ticket_category}</div>
-<div class="t price">${ticket.kr_paid} kr</div>
+<div class="t price">${money(ticket.kr_paid)}</div>
 <div class="qr">${qr}</div>
 <div class="t code">${ticket.short_code}</div>
 <div class="hr"></div>
@@ -74,15 +118,55 @@ body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica
   <div class="row"><span>Gyldig til</span><span>${toStr}</span></div>
 </div>
 <div class="row"><span>Selger</span><span>${ticket.issued_by || 'Sjåfør'}</span></div>
-${notice}
-<div class="hr"></div>
+<div class="mva">Inkl. 25% MVA: ${money(mva)}</div>
+${discountNotice(ticket)}
+${COMPANY_FOOTER}
 <div class="foot">Vis QR-koden ved kontroll.<br>Billetten er personlig.</div>
 <div class="tid">${ticket.ticket_id}</div>
 <script>window.onload=function(){setTimeout(function(){window.print();},300);};</script>
 </body></html>`;
-  const w = window.open('', '_blank', 'width=420,height=720');
-  if (!w) { toast.error('Tillat pop-up-vindu for utskrift'); return; }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+  openPrintWindow(html);
+}
+
+// Flere billetter samlet på én lapp.
+export function printCombined58(tickets) {
+  if (!tickets?.length) return;
+  const total = tickets.reduce((s, t) => s + (t.kr_paid || 0), 0);
+  const mva = mvaOf(total);
+  const hasDiscount = tickets.some(t => t.type && t.type !== 'adult');
+  const fromStr = fmt(tickets[0].purchased_at);
+  const toStr = fmt(tickets[tickets.length - 1].valid_until);
+  const items = tickets.map((t, i) => {
+    const qr = renderToStaticMarkup(<QRCodeSVG value={t.qr_token} size={110} level="M" includeMargin={false} />);
+    return `<div class="tk">
+  <div class="tk-type">${TYPE_LABEL[t.type] || t.type} · ${CAT_LABEL[t.ticket_category] || t.ticket_category}</div>
+  <div class="tk-row"><span>Pris</span><span>${money(t.kr_paid)}</span></div>
+  <div class="tk-qr">${qr}</div>
+  <div class="tk-code">${t.short_code}</div>
+  <div class="tk-row"><span>Gyldig</span><span>${fmt(t.purchased_at)} – ${fmt(t.valid_until)}</span></div>
+</div>`;
+  }).join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Billetter ${tickets.length}</title>
+<style>${baseStyles()}</style></head><body>
+${logoBlock()}
+<div class="t title" style="margin-top:1.5mm;">REISEBILLETT × ${tickets.length}</div>
+<div class="hr"></div>
+${items}
+<div class="hr"></div>
+<div class="total">
+  <div class="row"><span>Total</span><span>${money(total)}</span></div>
+  <div class="row" style="font-size:12px;font-weight:800;"><span>Inkl. 25% MVA</span><span>${money(mva)}</span></div>
+  <div class="row" style="font-size:12px;font-weight:800;"><span>Periode</span><span>${fromStr}–${toStr}</span></div>
+  <div class="row" style="font-size:12px;font-weight:800;"><span>Selger</span><span>${tickets[0].issued_by || 'Sjåfør'}</span></div>
+</div>
+${hasDiscount ? `<div class="notice">
+  <div class="notice-h">RABATT — KREVER BEVIS</div>
+  <div class="notice-b">Gyldig ID / bevis på rabatt<br>må vises ved kontroll.</div>
+  <div class="notice-f">Mangler bevis:<br>gebyr 1150 kr.</div>
+</div>` : ''}
+${COMPANY_FOOTER}
+<div class="foot">Vis QR-koden ved kontroll.<br>Billetten er personlig.</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},300);};</script>
+</body></html>`;
+  openPrintWindow(html);
 }
