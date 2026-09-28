@@ -69,18 +69,19 @@ export default function DriverSale({ driver }) {
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Billett ${ticket.short_code}</title>
 <style>
 @page { size: 58mm auto; margin: 0; }
-* { box-sizing: border-box; }
-body { width: 58mm; margin: 0; padding: 2mm 1mm; font-family: 'Courier New', monospace; color:#000; background:#fff; }
+* { box-sizing: border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica, sans-serif; color:#000; background:#fff; font-weight:700; }
 .t { text-align:center; }
-.logo { font-weight:900; font-size:18px; letter-spacing:2px; }
-.sub { font-size:10px; letter-spacing:1px; }
-.hr { border-top:1px dashed #000; margin:1.5mm 0; }
-.type { font-size:13px; font-weight:bold; text-transform:uppercase; }
-.price { font-size:20px; font-weight:900; margin:1mm 0; }
+.logo { font-weight:900; font-size:26px; letter-spacing:3px; }
+.sub { font-size:14px; font-weight:900; letter-spacing:2px; }
+.hr { border-top:2px solid #000; margin:1.5mm 0; }
+.type { font-size:17px; font-weight:900; text-transform:uppercase; }
+.price { font-size:30px; font-weight:900; margin:1mm 0; }
 .qr { text-align:center; margin:1mm 0; }
-.code { font-size:22px; font-weight:900; letter-spacing:4px; }
-.row { display:flex; justify-content:space-between; font-size:10px; margin:0.5mm 0; }
-.foot { font-size:9px; text-align:center; margin-top:1.5mm; line-height:1.4; }
+.code { font-size:30px; font-weight:900; letter-spacing:5px; }
+.row { display:flex; justify-content:space-between; font-size:13px; font-weight:700; margin:0.5mm 0; }
+.foot { font-size:12px; font-weight:700; text-align:center; margin-top:1.5mm; line-height:1.4; }
+.tid { font-size:10px; font-weight:700; text-align:center; margin-top:1mm; }
 </style></head><body>
 <div class="t logo">LST</div>
 <div class="t sub">REISEBILLETT</div>
@@ -91,11 +92,11 @@ body { width: 58mm; margin: 0; padding: 2mm 1mm; font-family: 'Courier New', mon
 <div class="t code">${ticket.short_code}</div>
 <div class="hr"></div>
 <div class="row"><span>Kjøpt</span><span>${dateStr}</span></div>
-<div class="row"><span>Gyldig til</span><span>${validStr}</span></div>
+<div class="row"><span>Gyldig</span><span>${validStr}</span></div>
 <div class="row"><span>Selger</span><span>${ticket.issued_by || ''}</span></div>
 <div class="hr"></div>
-<div class="foot">Bevis gyldig 5 min etter aktivering.<br>Hold QR-koden mot skanneren.</div>
-<div class="t" style="font-size:8px;margin-top:1mm;">${ticket.ticket_id}</div>
+<div class="foot">Gyldig 5 min etter<br>aktivering. Vis QR.</div>
+<div class="tid">${ticket.ticket_id}</div>
 <script>window.onload=function(){setTimeout(function(){window.print();},250);};</script>
 </body></html>`;
     const w = window.open('', '_blank', 'width=400,height=640');
