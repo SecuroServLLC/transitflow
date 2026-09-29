@@ -28,7 +28,13 @@ const money = (n) => `${String(n).replace('.', ',')} kr`;
 
 function pdf417DataURL(text) {
   const c = document.createElement('canvas');
-  bwipjs.toCanvas(c, { bcid: 'pdf417', text, scale: 2, height: 4, columns: 5, eclevel: 3 });
+  // Kompakt, balansert PDF417 som passer 58mm: færre kolonner + høyere rader,
+  // god feilkorreksjon. Skalert til ~40mm bred på termalpaper.
+  bwipjs.toCanvas(c, {
+    bcid: 'pdf417', text,
+    scale: 3, height: 10, columns: 3, eclevel: 5,
+    paddingwidth: 8, paddingheight: 8,
+  });
   return c.toDataURL('image/png');
 }
 
@@ -46,8 +52,8 @@ body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica
 .hr { border-top:2px solid #000; margin:1.5mm 0; }
 .type { font-size:18px; font-weight:900; text-transform:uppercase; }
 .price { font-size:34px; font-weight:900; margin:1mm 0; line-height:1; }
-.qr { text-align:center; margin:1mm 0; }
-.qr img { width:46mm; max-width:100%; }
+.qr { text-align:center; margin:1.5mm 0; }
+.qr img { width:40mm; max-width:100%; height:auto; image-rendering:pixelated; }
 .code { font-size:30px; font-weight:900; letter-spacing:5px; }
 .row { display:flex; justify-content:space-between; font-size:13px; font-weight:800; margin:0.6mm 0; }
 .fromto { border:2px solid #000; border-radius:2mm; padding:1mm 1.5mm; margin:1.5mm 0; }
@@ -67,7 +73,7 @@ body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica
 .tk .tk-row { display:flex; justify-content:space-between; font-size:12px; font-weight:800; }
 .tk .tk-code { font-size:18px; font-weight:900; letter-spacing:3px; text-align:center; margin-top:0.5mm; }
 .tk .tk-qr { text-align:center; margin:0.5mm 0; }
-.tk .tk-qr img { width:42mm; max-width:100%; }
+.tk .tk-qr img { width:34mm; max-width:100%; height:auto; image-rendering:pixelated; }
 .total { border:3px solid #000; border-radius:2mm; padding:1mm 1.5mm; margin:1.5mm 0; }
 .total .row { font-size:15px; font-weight:900; }`;
 }

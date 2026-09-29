@@ -15,7 +15,11 @@ const COMPANY = [
 
 function pdf417DataURL(text) {
   const c = document.createElement('canvas');
-  bwipjs.toCanvas(c, { bcid: 'pdf417', text, scale: 2, height: 4, columns: 5, eclevel: 3 });
+  bwipjs.toCanvas(c, {
+    bcid: 'pdf417', text,
+    scale: 3, height: 10, columns: 3, eclevel: 5,
+    paddingwidth: 8, paddingheight: 8,
+  });
   return c.toDataURL('image/png');
 }
 function loadImg(src) {
@@ -103,10 +107,10 @@ export async function drawTicketCanvas(ticket) {
   x.fillText(money(ticket.kr_paid), W / 2, y);
   y += 34;
   const img = await loadImg(pdf417DataURL(ticket.qr_token));
-  const iw = 340;
+  const iw = 260; // ~34mm på 384-dot 58mm-printer — plass til marger
   const ih = Math.round((iw * img.height) / img.width);
-  x.drawImage(img, (W - iw) / 2, y, iw, ih);
-  y += ih + 4;
+  x.drawImage(img, Math.round((W - iw) / 2), y, iw, ih);
+  y += ih + 6;
   x.font = '900 24px Arial';
   x.fillText(ticket.short_code, W / 2, y);
   y += 28;
@@ -155,7 +159,7 @@ export async function drawCombinedCanvas(tickets) {
   y = hr(x, y);
   for (const t of tickets) {
     const img = await loadImg(pdf417DataURL(t.qr_token));
-    const iw = 300;
+    const iw = 220;
     const ih = Math.round((iw * img.height) / img.width);
     const blockH = 24 + ih + 22;
     box(x, y, W - 28, blockH);
