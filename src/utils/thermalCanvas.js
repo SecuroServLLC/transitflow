@@ -64,7 +64,7 @@ function trim(c, y) {
 }
 function hr(x, y) {
   x.fillRect(14, y, W - 28, 2);
-  return y + 6;
+  return y + 14;
 }
 function box(x, y, w, h) {
   x.strokeStyle = '#000';
@@ -78,66 +78,66 @@ function footer(x, y) {
   x.font = '700 11px Arial';
   COMPANY.forEach((line) => {
     x.fillText(line, W / 2, y);
-    y += 14;
+    y += 17;
   });
-  y += 2;
+  y += 6;
   x.fillText('Vis koden ved kontroll. Billetten er personlig.', W / 2, y);
-  y += 14;
+  y += 18;
   return y;
 }
 
 export async function drawTicketCanvas(ticket) {
   const { c, x } = newCtx();
-  let y = 10;
+  let y = 14;
   x.font = '900 40px Arial';
   x.fillText('LST', W / 2, y);
-  y += 42;
+  y += 46;
   x.font = '700 11px Arial';
   x.fillText('KOLLEKTIVTRAFIKK', W / 2, y);
-  y += 16;
+  y += 20;
   y = hr(x, y);
   x.font = '900 18px Arial';
   x.fillText('REISEBILLETT', W / 2, y);
-  y += 22;
+  y += 28;
   y = hr(x, y);
   x.font = '900 18px Arial';
   x.fillText(`${TYPE_LABEL[ticket.type] || ticket.type} · ${CAT_LABEL[ticket.ticket_category] || ticket.ticket_category}`, W / 2, y);
-  y += 22;
+  y += 28;
   x.font = '900 32px Arial';
   x.fillText(money(ticket.kr_paid), W / 2, y);
-  y += 34;
+  y += 44;
   const img = await loadImg(pdf417DataURL(ticket.qr_token));
   const iw = 260; // ~34mm på 384-dot 58mm-printer — plass til marger
   const ih = Math.round((iw * img.height) / img.width);
   x.drawImage(img, Math.round((W - iw) / 2), y, iw, ih);
-  y += ih + 6;
+  y += ih + 14;
   x.font = '900 24px Arial';
   x.fillText(ticket.short_code, W / 2, y);
-  y += 28;
+  y += 34;
   y = hr(x, y);
   x.textAlign = 'left';
   x.font = '700 13px Arial';
   x.fillText(`Gyldig fra: ${fmt(ticket.purchased_at)}`, 14, y);
-  y += 16;
+  y += 20;
   x.fillText(`Gyldig til: ${fmt(ticket.valid_until)}`, 14, y);
-  y += 16;
+  y += 20;
   x.fillText(`Selger: ${ticket.issued_by || 'Sjåfør'}`, 14, y);
-  y += 16;
+  y += 22;
   x.textAlign = 'right';
   x.font = '700 12px Arial';
   x.fillText(`Inkl. 25% MVA: ${money(mvaOf(ticket.kr_paid))}`, W - 14, y);
-  y += 18;
+  y += 22;
   x.textAlign = 'center';
   if (ticket.type && ticket.type !== 'adult') {
     y = hr(x, y);
-    box(x, y, W - 28, 54);
+    box(x, y, W - 28, 64);
     x.font = '900 13px Arial';
-    x.fillText('RABATT — KREVER BEVIS', W / 2, y + 4);
+    x.fillText('RABATT — KREVER BEVIS', W / 2, y + 6);
     x.font = '700 11px Arial';
-    x.fillText('Gyldig ID/bevis må vises ved kontroll', W / 2, y + 21);
+    x.fillText('Gyldig ID/bevis må vises ved kontroll', W / 2, y + 25);
     x.font = '900 12px Arial';
-    x.fillText('Mangler bevis: gebyr 1150 kr', W / 2, y + 37);
-    y += 60;
+    x.fillText('Mangler bevis: gebyr 1150 kr', W / 2, y + 44);
+    y += 72;
   }
   y = footer(x, y);
   return trim(c, y);
@@ -145,55 +145,55 @@ export async function drawTicketCanvas(ticket) {
 
 export async function drawCombinedCanvas(tickets) {
   const { c, x } = newCtx();
-  let y = 10;
+  let y = 14;
   x.font = '900 40px Arial';
   x.fillText('LST', W / 2, y);
-  y += 42;
+  y += 46;
   x.font = '700 11px Arial';
   x.fillText('KOLLEKTIVTRAFIKK', W / 2, y);
-  y += 16;
+  y += 20;
   y = hr(x, y);
   x.font = '900 18px Arial';
   x.fillText(`REISEBILLETT × ${tickets.length}`, W / 2, y);
-  y += 22;
+  y += 28;
   y = hr(x, y);
   for (const t of tickets) {
     const img = await loadImg(pdf417DataURL(t.qr_token));
     const iw = 220;
     const ih = Math.round((iw * img.height) / img.width);
-    const blockH = 24 + ih + 22;
+    const blockH = 28 + ih + 30;
     box(x, y, W - 28, blockH);
     x.font = '900 15px Arial';
-    x.fillText(`${TYPE_LABEL[t.type] || t.type} · ${CAT_LABEL[t.ticket_category] || t.ticket_category}`, W / 2, y + 4);
+    x.fillText(`${TYPE_LABEL[t.type] || t.type} · ${CAT_LABEL[t.ticket_category] || t.ticket_category}`, W / 2, y + 7);
     x.font = '700 12px Arial';
-    x.fillText(money(t.kr_paid), W / 2, y + 22);
-    x.drawImage(img, (W - iw) / 2, y + 40, iw, ih);
+    x.fillText(money(t.kr_paid), W / 2, y + 28);
+    x.drawImage(img, Math.round((W - iw) / 2), y + 48, iw, ih);
     x.font = '900 16px Arial';
-    x.fillText(t.short_code, W / 2, y + 40 + ih + 2);
-    y += blockH + 4;
+    x.fillText(t.short_code, W / 2, y + 48 + ih + 8);
+    y += blockH + 10;
   }
   y = hr(x, y);
   const total = tickets.reduce((s, t) => s + (t.kr_paid || 0), 0);
   x.font = '900 16px Arial';
   x.fillText(`Total: ${money(total)}`, W / 2, y);
-  y += 20;
+  y += 24;
   x.font = '700 12px Arial';
   x.fillText(`Inkl. 25% MVA: ${money(mvaOf(total))}`, W / 2, y);
-  y += 16;
+  y += 20;
   x.fillText(`Periode: ${fmt(tickets[0].purchased_at)} – ${fmt(tickets[tickets.length - 1].valid_until)}`, W / 2, y);
-  y += 16;
+  y += 20;
   x.fillText(`Selger: ${tickets[0].issued_by || 'Sjåfør'}`, W / 2, y);
-  y += 18;
+  y += 22;
   if (tickets.some((t) => t.type && t.type !== 'adult')) {
     y = hr(x, y);
-    box(x, y, W - 28, 54);
+    box(x, y, W - 28, 64);
     x.font = '900 13px Arial';
-    x.fillText('RABATT — KREVER BEVIS', W / 2, y + 4);
+    x.fillText('RABATT — KREVER BEVIS', W / 2, y + 6);
     x.font = '700 11px Arial';
-    x.fillText('Gyldig ID/bevis må vises ved kontroll', W / 2, y + 21);
+    x.fillText('Gyldig ID/bevis må vises ved kontroll', W / 2, y + 25);
     x.font = '900 12px Arial';
-    x.fillText('Mangler bevis: gebyr 1150 kr', W / 2, y + 37);
-    y += 60;
+    x.fillText('Mangler bevis: gebyr 1150 kr', W / 2, y + 44);
+    y += 72;
   }
   y = footer(x, y);
   return trim(c, y);

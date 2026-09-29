@@ -42,40 +42,40 @@ function baseStyles() {
   return `
 @page { size: 58mm auto; margin: 0; }
 * { box-sizing: border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica, sans-serif; color:#000; background:#fff; font-weight:700; }
+body { width: 58mm; margin: 0; padding: 2.5mm 2mm; font-family: Arial, Helvetica, sans-serif; color:#000; background:#fff; font-weight:700; line-height:1.25; }
 .t { text-align:center; }
 .lockup { border:3px solid #000; border-radius:2mm; padding:1.5mm 2mm; display:inline-block; }
 .logo-img { height:11mm; display:block; margin:0 auto 0.5mm; }
 .logo-txt { font-weight:900; font-size:24px; letter-spacing:3px; line-height:1; }
 .logo-sub { font-size:9px; font-weight:900; letter-spacing:1.5px; }
 .title { font-size:15px; font-weight:900; letter-spacing:1px; }
-.hr { border-top:2px solid #000; margin:1.5mm 0; }
+.hr { border-top:2px solid #000; margin:3mm 0; }
 .type { font-size:18px; font-weight:900; text-transform:uppercase; }
-.price { font-size:34px; font-weight:900; margin:1mm 0; line-height:1; }
-.qr { text-align:center; margin:1.5mm 0; }
+.price { font-size:34px; font-weight:900; margin:2.5mm 0; line-height:1; }
+.qr { text-align:center; margin:3mm 0; }
 .qr img { width:40mm; max-width:100%; height:auto; image-rendering:pixelated; }
-.code { font-size:30px; font-weight:900; letter-spacing:5px; }
-.row { display:flex; justify-content:space-between; font-size:13px; font-weight:800; margin:0.6mm 0; }
-.fromto { border:2px solid #000; border-radius:2mm; padding:1mm 1.5mm; margin:1.5mm 0; }
-.fromto .row { font-size:14px; }
-.mva { font-size:12px; font-weight:800; text-align:right; margin:0.5mm 0; }
-.notice { border:3px solid #000; border-radius:2mm; padding:1.5mm; margin:1.5mm 0; text-align:center; }
-.notice-h { font-size:14px; font-weight:900; letter-spacing:1px; margin-bottom:0.8mm; }
+.code { font-size:30px; font-weight:900; letter-spacing:5px; margin-top:1mm; }
+.row { display:flex; justify-content:space-between; font-size:13px; font-weight:800; margin:1.3mm 0; }
+.fromto { border:2px solid #000; border-radius:2mm; padding:1.8mm 2mm; margin:3mm 0; }
+.fromto .row { font-size:14px; margin:1.5mm 0; }
+.mva { font-size:12px; font-weight:800; text-align:right; margin:1.2mm 0; }
+.notice { border:3px solid #000; border-radius:2mm; padding:2mm; margin:3mm 0; text-align:center; }
+.notice-h { font-size:14px; font-weight:900; letter-spacing:1px; margin-bottom:1.2mm; }
 .notice-b { font-size:12px; font-weight:800; line-height:1.4; }
-.notice-f { font-size:13px; font-weight:900; margin-top:0.8mm; line-height:1.3; }
+.notice-f { font-size:13px; font-weight:900; margin-top:1.2mm; line-height:1.3; }
 .co { text-align:center; }
-.co-n { font-size:12px; font-weight:900; }
-.co-l { font-size:11px; font-weight:700; line-height:1.4; }
-.foot { font-size:12px; font-weight:800; text-align:center; margin-top:1.5mm; line-height:1.4; }
-.tid { font-size:10px; font-weight:700; text-align:center; margin-top:1mm; }
-.tk { border:2px solid #000; border-radius:2mm; padding:1.5mm; margin:1.5mm 0; }
+.co-n { font-size:12px; font-weight:900; margin-bottom:0.6mm; }
+.co-l { font-size:11px; font-weight:700; line-height:1.5; margin:0.4mm 0; }
+.foot { font-size:12px; font-weight:800; text-align:center; margin-top:3mm; line-height:1.4; }
+.tid { font-size:10px; font-weight:700; text-align:center; margin-top:1.5mm; }
+.tk { border:2px solid #000; border-radius:2mm; padding:2mm; margin:2.5mm 0; }
 .tk .tk-type { font-size:14px; font-weight:900; text-transform:uppercase; }
-.tk .tk-row { display:flex; justify-content:space-between; font-size:12px; font-weight:800; }
-.tk .tk-code { font-size:18px; font-weight:900; letter-spacing:3px; text-align:center; margin-top:0.5mm; }
-.tk .tk-qr { text-align:center; margin:0.5mm 0; }
+.tk .tk-row { display:flex; justify-content:space-between; font-size:12px; font-weight:800; margin:1mm 0; }
+.tk .tk-code { font-size:18px; font-weight:900; letter-spacing:3px; text-align:center; margin-top:1mm; }
+.tk .tk-qr { text-align:center; margin:1.5mm 0; }
 .tk .tk-qr img { width:34mm; max-width:100%; height:auto; image-rendering:pixelated; }
-.total { border:3px solid #000; border-radius:2mm; padding:1mm 1.5mm; margin:1.5mm 0; }
-.total .row { font-size:15px; font-weight:900; }`;
+.total { border:3px solid #000; border-radius:2mm; padding:2mm; margin:3mm 0; }
+.total .row { font-size:15px; font-weight:900; margin:1.2mm 0; }`;
 }
 function logoBlock() {
   return `<div class="t">
