@@ -6,6 +6,8 @@ import { genShortCode } from '@/utils/customerAuth';
 import { toast } from 'sonner';
 import { Printer, CheckCircle2, ArrowLeft, Plus, Minus, Layers, Split } from 'lucide-react';
 import { printTicket58, printCombined58 } from '@/components/driver/PrintableTicket58';
+import PrinterBar from '@/components/driver/PrinterBar';
+import { getPrinter } from '@/utils/directPrint';
 
 const TYPES = [
   { type: 'adult', label: 'Voksen', icon: '🧑' },
@@ -105,6 +107,9 @@ export default function DriverSale({ driver }) {
             <Printer className="w-4 h-4 mr-1" /> Skriv ut igjen
           </Button>
         </div>
+        <p className="text-xs text-slate-500 text-center">
+          {getPrinter() ? 'USB-printer tilkoblet · printer umiddelbart' : 'Bruker utskriftsdialog – koble til USB-printer for direkte-utskrift'}
+        </p>
       </div>
     );
   }
@@ -115,6 +120,8 @@ export default function DriverSale({ driver }) {
         <h2 className="text-2xl font-black">Salg i buss</h2>
         <p className="text-slate-500 text-sm">Maks {MAX_QTY} av hver type · 58mm utskrift</p>
       </div>
+
+      <PrinterBar />
 
       <div className="flex gap-2">
         {[['single', '🎫 Enkelt'], ['period', '📅 30-dager']].map(([v, l]) => (
