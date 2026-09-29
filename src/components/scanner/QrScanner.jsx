@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+
+// Støtter QR + PDF417 (stablet 2D) så sjåfør-lappene forblir lesbare.
+const FORMATS = [
+  Html5QrcodeSupportedFormats.QR_CODE,
+  Html5QrcodeSupportedFormats.PDF_417,
+];
 
 // Live camera QR scanner. Calls onScan(decodedText) once per unique code
 // (with a short cooldown to avoid duplicate triggers). Mount/unmount controls
@@ -18,10 +24,10 @@ export default function QrScanner({ onScan }) {
     const id = `qr-reader-${Math.random().toString(36).slice(2, 9)}`;
     containerRef.current.id = id;
 
-    scanner = new Html5Qrcode(id, { verbose: false });
+    scanner = new Html5Qrcode(id, { verbose: false, formatsToSupport: FORMATS });
     scanner.start(
       { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+      { fps: 10, qrbox: { width: 240, height: 200 }, aspectRatio: 1.2 },
       (decodedText) => {
         if (!mounted) return;
         const now = Date.now();

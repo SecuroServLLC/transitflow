@@ -1,10 +1,9 @@
-import { renderToStaticMarkup } from 'react-dom/server';
-import { QRCodeSVG } from 'qrcode.react';
+import bwipjs from 'bwip-js';
 import { toast } from 'sonner';
+import { drawTicketCanvas, drawCombinedCanvas } from '@/utils/thermalCanvas';
+import { printCanvas, getPrinter } from '@/utils/directPrint';
 
-// 58mm termobillett — svart/hvitt, tykk skrift, ingen fargeblokker (sparer termopapir).
 const LOGO_URL = 'https://media.base44.com/images/public/6a1cc945ce9fabc4f8162a85/e3254d40a_latest-1224696648.webp';
-
 const TYPE_LABEL = { adult: 'Voksen', child: 'Barn', senior: 'Honnør', student: 'Student', military: 'Forsvar' };
 const CAT_LABEL = { single: 'Enkelt', period: '30-dager' };
 
@@ -24,10 +23,14 @@ const fmt = (iso) => {
   const p = (n) => String(n).padStart(2, '0');
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${String(d.getFullYear()).slice(-2)} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
-
-// MVA 25% inkludert i pris: mva = pris * 0,2
 const mvaOf = (kr) => Math.round(kr * 0.2 * 100) / 100;
 const money = (n) => `${String(n).replace('.', ',')} kr`;
+
+function pdf417DataURL(text) {
+  const c = document.createElement('canvas');
+  bwipjs.toCanvas(c, { bcid: 'pdf417', text, scale: 2, height: 4, columns: 5, eclevel: 3 });
+  return c.toDataURL('image/png');
+}
 
 function baseStyles() {
   return `
@@ -44,6 +47,7 @@ body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica
 .type { font-size:18px; font-weight:900; text-transform:uppercase; }
 .price { font-size:34px; font-weight:900; margin:1mm 0; line-height:1; }
 .qr { text-align:center; margin:1mm 0; }
+.qr img { width:46mm; max-width:100%; }
 .code { font-size:30px; font-weight:900; letter-spacing:5px; }
 .row { display:flex; justify-content:space-between; font-size:13px; font-weight:800; margin:0.6mm 0; }
 .fromto { border:2px solid #000; border-radius:2mm; padding:1mm 1.5mm; margin:1.5mm 0; }
@@ -63,10 +67,10 @@ body { width: 58mm; margin: 0; padding: 1.5mm 1mm; font-family: Arial, Helvetica
 .tk .tk-row { display:flex; justify-content:space-between; font-size:12px; font-weight:800; }
 .tk .tk-code { font-size:18px; font-weight:900; letter-spacing:3px; text-align:center; margin-top:0.5mm; }
 .tk .tk-qr { text-align:center; margin:0.5mm 0; }
+.tk .tk-qr img { width:42mm; max-width:100%; }
 .total { border:3px solid #000; border-radius:2mm; padding:1mm 1.5mm; margin:1.5mm 0; }
 .total .row { font-size:15px; font-weight:900; }`;
 }
-
 function logoBlock() {
   return `<div class="t">
   <div class="lockup">
@@ -76,7 +80,6 @@ function logoBlock() {
   </div>
 </div>`;
 }
-
 function discountNotice(ticket) {
   const isDiscount = ticket.type && ticket.type !== 'adult';
   return isDiscount
@@ -90,19 +93,30 @@ function discountNotice(ticket) {
 
 function openPrintWindow(html) {
   const w = window.open('', '_blank', 'width=420,height=720');
-  if (!w) { toast.error('Tillat pop-up-vindu for utskrift'); return; }
+  if (!w) {
+    toast.error('Tillat pop-up-vindu for utskrift');
+    return;
+  }
   w.document.open();
   w.document.write(html);
   w.document.close();
 }
 
-// Én billett per lapp.
-export function printTicket58(ticket) {
+// Én billett per lapp — direkte til USB-printer hvis tilkoblet, ellers utskriftsdialog.
+export async function printTicket58(ticket) {
   if (!ticket) return;
-  const qr = renderToStaticMarkup(<QRCodeSVG value={ticket.qr_token} size={140} level="M" includeMargin={false} />);
+  if (getPrinter()) {
+    try {
+      const canvas = await drawTicketCanvas(ticket);
+      await printCanvas(canvas);
+      return;
+    } catch (e) {
+      toast.error('Direkte-utskrift feilet – bruker utskriftsdialog');
+    }
+  }
+  const pdf = pdf417DataURL(ticket.qr_token);
   const fromStr = fmt(ticket.purchased_at);
   const toStr = fmt(ticket.valid_until);
-  const mva = mvaOf(ticket.kr_paid);
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Billett ${ticket.short_code}</title>
 <style>${baseStyles()}</style></head><body>
 ${logoBlock()}
@@ -110,7 +124,7 @@ ${logoBlock()}
 <div class="hr"></div>
 <div class="t type">${TYPE_LABEL[ticket.type] || ticket.type} · ${CAT_LABEL[ticket.ticket_category] || ticket.ticket_category}</div>
 <div class="t price">${money(ticket.kr_paid)}</div>
-<div class="qr">${qr}</div>
+<div class="qr"><img src="${pdf}" alt="PDF417" /></div>
 <div class="t code">${ticket.short_code}</div>
 <div class="hr"></div>
 <div class="fromto">
@@ -118,10 +132,10 @@ ${logoBlock()}
   <div class="row"><span>Gyldig til</span><span>${toStr}</span></div>
 </div>
 <div class="row"><span>Selger</span><span>${ticket.issued_by || 'Sjåfør'}</span></div>
-<div class="mva">Inkl. 25% MVA: ${money(mva)}</div>
+<div class="mva">Inkl. 25% MVA: ${money(mvaOf(ticket.kr_paid))}</div>
 ${discountNotice(ticket)}
 ${COMPANY_FOOTER}
-<div class="foot">Vis QR-koden ved kontroll.<br>Billetten er personlig.</div>
+<div class="foot">Vis koden ved kontroll.<br>Billetten er personlig.</div>
 <div class="tid">${ticket.ticket_id}</div>
 <script>window.onload=function(){setTimeout(function(){window.print();},300);};</script>
 </body></html>`;
@@ -129,23 +143,34 @@ ${COMPANY_FOOTER}
 }
 
 // Flere billetter samlet på én lapp.
-export function printCombined58(tickets) {
+export async function printCombined58(tickets) {
   if (!tickets?.length) return;
+  if (getPrinter()) {
+    try {
+      const canvas = await drawCombinedCanvas(tickets);
+      await printCanvas(canvas);
+      return;
+    } catch (e) {
+      toast.error('Direkte-utskrift feilet – bruker utskriftsdialog');
+    }
+  }
   const total = tickets.reduce((s, t) => s + (t.kr_paid || 0), 0);
   const mva = mvaOf(total);
-  const hasDiscount = tickets.some(t => t.type && t.type !== 'adult');
+  const hasDiscount = tickets.some((t) => t.type && t.type !== 'adult');
   const fromStr = fmt(tickets[0].purchased_at);
   const toStr = fmt(tickets[tickets.length - 1].valid_until);
-  const items = tickets.map((t, i) => {
-    const qr = renderToStaticMarkup(<QRCodeSVG value={t.qr_token} size={110} level="M" includeMargin={false} />);
-    return `<div class="tk">
+  const items = tickets
+    .map((t) => {
+      const pdf = pdf417DataURL(t.qr_token);
+      return `<div class="tk">
   <div class="tk-type">${TYPE_LABEL[t.type] || t.type} · ${CAT_LABEL[t.ticket_category] || t.ticket_category}</div>
   <div class="tk-row"><span>Pris</span><span>${money(t.kr_paid)}</span></div>
-  <div class="tk-qr">${qr}</div>
+  <div class="tk-qr"><img src="${pdf}" alt="PDF417" /></div>
   <div class="tk-code">${t.short_code}</div>
   <div class="tk-row"><span>Gyldig</span><span>${fmt(t.purchased_at)} – ${fmt(t.valid_until)}</span></div>
 </div>`;
-  }).join('');
+    })
+    .join('');
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Billetter ${tickets.length}</title>
 <style>${baseStyles()}</style></head><body>
 ${logoBlock()}
@@ -165,7 +190,7 @@ ${hasDiscount ? `<div class="notice">
   <div class="notice-f">Mangler bevis:<br>gebyr 1150 kr.</div>
 </div>` : ''}
 ${COMPANY_FOOTER}
-<div class="foot">Vis QR-koden ved kontroll.<br>Billetten er personlig.</div>
+<div class="foot">Vis koden ved kontroll.<br>Billetten er personlig.</div>
 <script>window.onload=function(){setTimeout(function(){window.print();},300);};</script>
 </body></html>`;
   openPrintWindow(html);
